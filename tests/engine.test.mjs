@@ -119,6 +119,12 @@ const grid = st => { const rows = []; for (let r = 0; r < st.h; r++) rows.push(s
   let same = 0; let prev = makeCfg({ start: "x" });
   for (let i = 0; i < 200; i++) { const c = makeCfg({ start: "x", prev }); if (c.b === prev.b && c.mod === prev.mod) same++; prev = c; }
   check("stejná deska+modifikátor nikdy dvakrát po sobě", same === 0);
+  let rep = 0; prev = makeCfg({ start: "x", board: "klasika", mod: "klid" });
+  for (let i = 0; i < 300; i++) { const c = makeCfg({ start: "x", prev }); if (c.b === prev.b || c.mod === prev.mod) rep++; prev = c; }
+  check("další partie má jinou desku i jiný modifikátor", rep === 0);
+  let tri = 0; let p1 = makeCfg({ start: "x", board: "klasika", mod: "klid" }), p2 = makeCfg({ start: "o", prev: p1 });
+  for (let i = 0; i < 300; i++) { const c = makeCfg({ start: "x", prev: p2 }); if (new Set([p1.b, p2.b, c.b]).size < 3 || new Set([p1.mod, p2.mod, c.mod]).size < 3) tri++; p1 = p2; p2 = c; }
+  check("tři partie za sebou: tři desky a tři různá překvapení", tri === 0);
 }
 // 12) náhodné partie: přehrání nikdy nespadne a stav je konzistentní
 {

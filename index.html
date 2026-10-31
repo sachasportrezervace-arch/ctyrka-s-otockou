@@ -1,0 +1,351 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Čtyřka s otočkou</title>
+<meta name="description" content="Čtyři v řadě pro dva na jednom odkazu. Jednou za partii smíš místo tahu otočit celou desku a všechno se sesype.">
+<meta name="theme-color" content="#FFC93E">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Čtyřka">
+<link rel="preload" href="fonts/ro-400-latin.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="fonts/ft-700-latin.woff2" as="font" type="font/woff2" crossorigin>
+<style>
+@font-face { font-family: "Rammetto One"; font-weight: 400; font-display: swap; src: url("fonts/ro-400-latin.woff2") format("woff2"); unicode-range: U+0000-00FF, U+2000-206F; }
+@font-face { font-family: "Rammetto One"; font-weight: 400; font-display: swap; src: url("fonts/ro-400-latin-ext.woff2") format("woff2"); unicode-range: U+0100-02FF; }
+@font-face { font-family: "Figtree"; font-weight: 500; font-display: swap; src: url("fonts/ft-500-latin.woff2") format("woff2"); unicode-range: U+0000-00FF, U+2000-206F; }
+@font-face { font-family: "Figtree"; font-weight: 500; font-display: swap; src: url("fonts/ft-500-latin-ext.woff2") format("woff2"); unicode-range: U+0100-02FF; }
+@font-face { font-family: "Figtree"; font-weight: 700; font-display: swap; src: url("fonts/ft-700-latin.woff2") format("woff2"); unicode-range: U+0000-00FF, U+2000-206F; }
+@font-face { font-family: "Figtree"; font-weight: 700; font-display: swap; src: url("fonts/ft-700-latin-ext.woff2") format("woff2"); unicode-range: U+0100-02FF; }
+@font-face { font-family: "Figtree"; font-weight: 800; font-display: swap; src: url("fonts/ft-800-latin.woff2") format("woff2"); unicode-range: U+0000-00FF, U+2000-206F; }
+@font-face { font-family: "Figtree"; font-weight: 800; font-display: swap; src: url("fonts/ft-800-latin-ext.woff2") format("woff2"); unicode-range: U+0100-02FF; }
+
+/* „Plakát“: slunečnicová plocha, kobaltová deska, rajčatové kuličky proti mléčným kostkám */
+:root {
+  --bg: #FFC93E; --bg-2: #F5B526; --text: #1C1F4A; --muted: #6B5420;
+  --plate: #2847C9; --plate-dk: #1A2F96; --hole: #142272;
+  --x: #F2492F; --x-dk: #C9321D; --o: #FFF6E6; --o-dk: #D9CCB4;
+  --ink: #1C1F4A; --tongue: #FF8A7A; --sweat: #8FD6FF;
+  --peb: #A7A3B8; --peb-dk: #85819A; --rock: #7C7790; --rock-dk: #5B5670; --bolt: #E6E1D2;
+  --btn: #1C1F4A; --btn-text: #FFF6E6; --card: #FFF6E6;
+  --display: "Rammetto One", "Arial Black", system-ui, sans-serif;
+  --cell: 52px;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg); color: var(--text); font: 500 16px/1.35 "Figtree", system-ui, sans-serif; overflow: hidden; -webkit-tap-highlight-color: transparent; -webkit-text-size-adjust: 100%; }
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+[hidden] { display: none !important; }
+.app { height: 100dvh; display: grid; grid-template-rows: auto 1fr; position: relative; isolation: isolate;
+  padding: max(8px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(12px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left)); }
+.backdrop { position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+.backdrop::before { content: ""; position: absolute; left: 50%; top: 58%; width: 160vmax; height: 160vmax; border-radius: 50%; background: var(--bg-2); transform: translate(-50%, 16%); }
+
+/* horní lišta: značka a pár ikon */
+.bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 40px; }
+.brand { font: 400 15px/1 var(--display); letter-spacing: .01em; display: flex; align-items: center; gap: 8px; text-decoration: none; color: inherit; background: none; border: 0; padding: 4px 0; }
+.brand i { width: 22px; height: 22px; display: block; }
+.brand i svg { width: 100%; height: 100%; display: block; }
+.icons { display: flex; gap: 4px; }
+.ib { appearance: none; border: 0; background: transparent; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; color: var(--text); }
+.ib:hover { background: rgba(28, 31, 74, .08); }
+.ib svg { width: 22px; height: 22px; display: block; }
+.ib[aria-pressed="true"] { background: rgba(28, 31, 74, .1); }
+:focus-visible { outline: 3px solid var(--text); outline-offset: 2px; }
+
+/* obrazovky mimo hru */
+.screen { overflow-y: auto; display: grid; justify-items: center; align-content: start; padding: 8px 4px 24px; }
+.panel { width: min(100%, 440px); display: grid; gap: 14px; justify-items: center; text-align: center; }
+.duo { display: flex; align-items: flex-end; justify-content: center; gap: 4px; margin: 6px 0 2px; }
+.duo .c { width: 112px; height: 112px; }
+.duo .c svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.duo .c.ball { transform: rotate(-6deg); }
+.duo .c.cube { transform: rotate(5deg) translateY(-2px); }
+.duo .mini { width: 64px; height: 64px; margin: 0 -6px 18px; color: var(--plate); animation: spin 5.5s cubic-bezier(.6, -.3, .3, 1.3) infinite; }
+.duo .mini svg { width: 100%; height: 100%; display: block; }
+@keyframes spin { 0%, 30% { transform: rotate(0); } 45%, 80% { transform: rotate(90deg); } 95%, 100% { transform: rotate(0); } }
+h1, h2 { font: 400 clamp(30px, 8.6vw, 44px)/1.04 var(--display); margin: 0; letter-spacing: -.005em; }
+h2 { font-size: clamp(26px, 7.4vw, 36px); }
+.lead { font-size: 17px; font-weight: 700; margin: 0; max-width: 34ch; }
+.lead b { font-weight: 800; }
+.small { font-size: 14px; font-weight: 700; color: var(--muted); margin: 0; }
+form { width: 100%; display: grid; gap: 10px; }
+label.f { display: grid; gap: 5px; text-align: left; font-size: 14px; font-weight: 800; }
+label.f input { width: 100%; border: 3px solid var(--text); background: var(--card); border-radius: 16px; padding: 12px 14px; font-size: 18px; font-weight: 700; outline: none; }
+label.f input:focus { box-shadow: 0 0 0 3px rgba(28, 31, 74, .2); }
+.btn { appearance: none; border: 0; border-radius: 18px; padding: 15px 20px; background: var(--btn); color: var(--btn-text); font: 800 18px/1.1 "Figtree", sans-serif; width: 100%; box-shadow: 0 5px 0 rgba(28, 31, 74, .28); transition: transform .08s; text-decoration: none; display: block; }
+.btn:active { transform: translateY(3px); box-shadow: 0 2px 0 rgba(28, 31, 74, .28); }
+.btn:disabled { opacity: .55; }
+.btn.ghost { background: transparent; color: var(--text); box-shadow: inset 0 0 0 3px var(--text); }
+.btn.slim { padding: 11px 16px; font-size: 16px; }
+.btn span { display: block; font-size: 13px; font-weight: 700; opacity: .7; margin-top: 3px; }
+.linkbox { width: 100%; display: flex; gap: 8px; align-items: center; background: var(--card); border-radius: 16px; padding: 6px 6px 6px 14px; border: 3px solid var(--text); }
+.linkbox input { flex: 1; min-width: 0; border: 0; background: none; font-size: 15px; font-weight: 700; outline: none; }
+.linkbox .btn { width: auto; padding: 10px 14px; font-size: 15px; box-shadow: none; }
+.recent { width: 100%; display: grid; gap: 8px; margin-top: 6px; }
+.recent h3 { font-size: 13px; font-weight: 800; color: var(--muted); margin: 0; text-transform: uppercase; letter-spacing: .06em; }
+.textlink { appearance: none; border: 0; background: none; font-weight: 800; font-size: 15px; text-decoration: underline; text-underline-offset: 3px; padding: 6px; }
+.wait { display: flex; gap: 6px; justify-content: center; }
+.wait i { width: 10px; height: 10px; border-radius: 50%; background: var(--text); opacity: .3; animation: dot 1.2s infinite; }
+.wait i:nth-child(2) { animation-delay: .2s; } .wait i:nth-child(3) { animation-delay: .4s; }
+@keyframes dot { 30% { opacity: 1; transform: translateY(-4px); } }
+
+/* ---------- hra ---------- */
+.game { display: grid; grid-template-rows: auto 1fr auto; min-height: 0; }
+.hud { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 6px; }
+.pl { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.pl-o { flex-direction: row-reverse; text-align: right; }
+.ava { width: 46px; height: 46px; flex: none; transition: transform .25s; }
+.ava svg, .big svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.pl-t { min-width: 0; display: grid; gap: 2px; }
+.pl-t b { font-weight: 800; font-size: 17px; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pl-t span { font-size: 12.5px; font-weight: 700; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pl.is-turn .ava { animation: bob 1.4s ease-in-out infinite; }
+.pl:not(.is-turn) .ava { transform: scale(.88); }
+@keyframes bob { 50% { transform: translateY(-4px) rotate(-3deg); } }
+/* otočky jako žetony: plný = k dispozici, prázdný kroužek = použitý */
+.tok { display: inline-flex; gap: 4px; flex: none; }
+.tok i { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: var(--text); color: var(--bg); transition: opacity .3s, transform .3s; }
+.tok i svg { width: 64%; height: 64%; display: block; }
+.tok i.used { background: transparent; color: var(--text); box-shadow: inset 0 0 0 2.5px var(--text); opacity: .3; transform: scale(.85); }
+.tok i.pop { animation: tokpop .5s; }
+@keyframes tokpop { 40% { transform: scale(1.35); } }
+.mid { text-align: center; padding: 0 2px; }
+.score { font: 400 30px/1 var(--display); letter-spacing: .02em; white-space: nowrap; }
+.score i { font-style: normal; opacity: .4; padding: 0 2px; }
+.series { font-size: 11.5px; font-weight: 800; color: var(--muted); margin-top: 4px; white-space: nowrap; }
+.side { display: none; }
+/* mobil: otočky jako odznak na rohu avatara, ať jméno nemusí uhýbat */
+.pl { position: relative; }
+.pl > .tok { position: absolute; top: 30px; left: 30px; }
+.pl-o > .tok { left: auto; right: 30px; flex-direction: row-reverse; }
+.pl > .tok i { width: 22px; height: 22px; box-shadow: 0 0 0 2.5px var(--bg); }
+.pl > .tok i.used { box-shadow: inset 0 0 0 2.5px var(--text), 0 0 0 2.5px var(--bg); }
+.brand { white-space: nowrap; font-size: 14px; }
+@media (max-width: 599px) { .brand span { display: none; } .brand i { width: 30px; height: 30px; } }
+.app { overflow: hidden; }
+
+.stage { display: grid; grid-template-rows: auto 1fr; justify-items: center; min-height: 0; position: relative; }
+.turnline { text-align: center; padding-top: 4px; min-height: 64px; display: grid; align-content: start; gap: 3px; }
+.turnline strong { font: 400 clamp(24px, 6.8vw, 32px)/1.05 var(--display); display: block; }
+.turnline span { font-size: 14px; font-weight: 700; color: var(--muted); max-width: 36ch; justify-self: center; }
+.turnline span b { color: var(--text); font-weight: 800; }
+.boardbox { align-self: center; position: relative; width: calc(var(--n) * var(--cell) + var(--cell) * .28); height: calc(var(--n) * var(--cell) + var(--cell) * .28); margin-top: calc(var(--cell) * 1.1); display: grid; place-items: center; }
+.board { position: relative; background: var(--plate); border-radius: calc(var(--cell) * .34); box-shadow: 0 calc(var(--cell) * .16) 0 var(--plate-dk); padding: calc(var(--cell) * .14); transform-origin: 50% 50%; }
+.board.tilt-L { transform: rotate(-7deg); } .board.tilt-R { transform: rotate(7deg); }
+.board.tilting { transition: transform .35s cubic-bezier(.3, 1.6, .5, 1); }
+.grid { position: relative; width: calc(var(--w) * var(--cell)); height: calc(var(--h) * var(--cell)); touch-action: manipulation; }
+.holes, .stones, .fx { position: absolute; inset: 0; }
+.fx { pointer-events: none; overflow: visible; }
+.hole { position: absolute; width: calc(var(--cell) * .8); height: calc(var(--cell) * .8); margin: calc(var(--cell) * .1); border-radius: 50%; background: var(--hole); }
+.st { position: absolute; left: 0; top: 0; width: var(--cell); height: var(--cell); padding: calc(var(--cell) * .06); will-change: transform; }
+.st > div { width: 100%; height: 100%; }
+.st svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.st.land > div { animation: land .32s ease-out; transform-origin: 50% 100%; }
+@keyframes land { 0% { transform: scale(1.12, .8); } 45% { transform: scale(.94, 1.08); } 100% { transform: none; } }
+.st.wob > div { animation: wob .5s ease-out; }
+@keyframes wob { 0% { transform: rotate(var(--wr, 90deg)); } 60% { transform: rotate(calc(var(--wr, 90deg) * -.12)); } 100% { transform: none; } }
+.st.poof > div { animation: poof .45s ease-in forwards; }
+@keyframes poof { 30% { transform: scale(1.25); } 100% { transform: scale(0) rotate(40deg); opacity: 0; } }
+.st.out { transition: transform .5s cubic-bezier(.5, 0, .9, .5), opacity .5s; opacity: 0; }
+.st.win > div { animation: winb .7s ease-in-out infinite alternate; }
+@keyframes winb { to { transform: translateY(-7%) scale(1.06); } }
+.st.ghost { opacity: .32; pointer-events: none; }
+.f > g { display: none; }
+[data-m="idle"] .f-idle, [data-m="fall"] .f-fall, [data-m="happy"] .f-happy, [data-m="sad"] .f-sad, [data-m="dizzy"] .f-dizzy { display: inline; }
+.st[data-m="idle"] .eyes { animation: blink 4.6s infinite; animation-delay: var(--bd, 0s); transform-box: fill-box; transform-origin: center; }
+@keyframes blink { 0%, 96%, 100% { transform: none; } 98% { transform: scaleY(.1); } }
+.hand { position: absolute; left: 0; top: 0; width: var(--cell); height: var(--cell); padding: calc(var(--cell) * .06); transition: transform .16s ease-out; pointer-events: none; }
+.hand svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.hand::after { content: ""; position: absolute; left: 50%; bottom: calc(var(--cell) * -.16); border: 7px solid transparent; border-top: 9px solid var(--text); transform: translateX(-50%); opacity: .45; }
+.hand.off { opacity: 0; }
+/* výherní řada: světlý pruh pod kameny */
+.winline { fill: none; stroke: #FFF6E6; stroke-linecap: round; opacity: .5; animation: glow .5s ease-out; }
+@keyframes glow { from { opacity: 0; } }
+
+/* spodek: otočky u rohů, uprostřed nápověda nebo odveta */
+.ctrl { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; padding-top: 12px; min-height: 84px; }
+.rot { appearance: none; border: 0; width: 66px; height: 66px; border-radius: 50%; background: var(--btn); color: var(--btn-text); display: grid; place-items: center; box-shadow: 0 5px 0 rgba(28, 31, 74, .28); position: relative; transition: transform .12s; }
+.rot svg { width: 34px; height: 34px; display: block; }
+.rot:active { transform: translateY(3px); box-shadow: 0 2px 0 rgba(28, 31, 74, .28); }
+.rot.armed { background: var(--x); color: #fff; animation: arm .8s ease-in-out infinite alternate; }
+@keyframes arm { to { transform: scale(1.08); } }
+.rot.gone { visibility: hidden; }
+.hint { text-align: center; font-size: 14.5px; font-weight: 700; color: var(--muted); line-height: 1.3; }
+.hint b { color: var(--text); font-weight: 800; }
+.hint .btn { margin: 0 auto; max-width: 300px; }
+.hint .row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 6px; }
+.chip { appearance: none; border: 0; border-radius: 99px; background: var(--text); color: var(--bg); font-weight: 800; font-size: 14px; padding: 8px 14px; }
+.chip.ghost { background: transparent; color: var(--text); box-shadow: inset 0 0 0 2.5px var(--text); }
+
+/* desktop: hráči zleva a zprava těsně u desky, otočky pod deskou */
+@media (min-width: 900px) and (min-height: 560px) {
+  .app { padding: 16px 36px 22px; }
+  .game { grid-template-columns: 1fr auto 1fr; grid-template-rows: auto 1fr auto; column-gap: 40px; }
+  .hud { grid-column: 1 / -1; grid-template-columns: 1fr; justify-items: center; }
+  .hud .pl { display: none; }
+  .score { font-size: 46px; }
+  .series { font-size: 13px; }
+  .stage { grid-column: 2; grid-row: 2; }
+  .ctrl { grid-column: 2; grid-row: 3; width: min(100%, 620px); justify-self: center; }
+  .turnline strong { font-size: 36px; }
+  .side { display: grid; grid-row: 2 / 4; align-content: center; justify-items: center; gap: 8px; text-align: center; padding-bottom: 60px; }
+  .side-x { grid-column: 1; justify-self: end; } .side-o { grid-column: 3; justify-self: start; }
+  .side .big { width: clamp(120px, 12vw, 180px); aspect-ratio: 1; transition: transform .3s, filter .3s; }
+  .side b { font: 400 28px/1.05 var(--display); max-width: 9em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .side .ttl { font-size: 14px; font-weight: 800; color: var(--muted); }
+  .side .tok i { width: 34px; height: 34px; }
+  .side .tl { font-size: 13px; font-weight: 800; color: var(--muted); }
+  .side.is-turn .big { animation: bob 1.4s ease-in-out infinite; }
+  .side:not(.is-turn) .big { transform: scale(.84); }
+  .screen { align-content: center; }
+  .duo .c { width: 150px; height: 150px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+}
+
+/* toast, nápověda k celé obrazovce, pravidla */
+.toast { position: fixed; left: 50%; bottom: max(24px, env(safe-area-inset-bottom)); transform: translateX(-50%); background: var(--text); color: var(--bg); font-weight: 800; padding: 12px 18px; border-radius: 14px; z-index: 30; max-width: calc(100vw - 32px); text-align: center; }
+.sheet { position: fixed; inset: 0; z-index: 20; display: grid; place-items: end center; background: rgba(28, 31, 74, .45); padding: 12px; }
+.sheet > div { background: var(--card); border-radius: 24px; width: min(100%, 520px); max-height: 86dvh; overflow-y: auto; padding: 22px 22px 18px; box-shadow: 0 10px 0 rgba(28, 31, 74, .3); }
+@media (min-width: 900px) { .sheet { place-items: center; } }
+.sheet h2 { font-size: 26px; margin-bottom: 8px; }
+.sheet ol { margin: 0 0 12px; padding-left: 22px; display: grid; gap: 8px; font-weight: 600; }
+.sheet ol b { font-weight: 800; }
+.sheet .legend { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 10px 0 14px; text-align: center; font-size: 13px; font-weight: 800; }
+.sheet .legend i { display: block; width: 52px; height: 52px; margin: 0 auto 4px; }
+.sheet .legend svg { width: 100%; height: 100%; display: block; }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="backdrop"></div>
+  <nav class="bar">
+    <button class="brand" id="brandBtn" type="button"><i id="brandIco"></i><span>Čtyřka s otočkou</span></button>
+    <div class="icons">
+      <button class="ib" id="rulesBtn" type="button" aria-label="Jak se hraje" title="Jak se hraje"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><circle cx="12" cy="12" r="9.5"/><path d="M9.3 9.4a2.8 2.8 0 1 1 3.9 2.6c-.8.3-1.2 1-1.2 1.8v.4"/><circle cx="12" cy="17.4" r=".6" fill="currentColor"/></svg></button>
+      <button class="ib" id="linkBtn" type="button" aria-label="Kopírovat odkaz na hru" title="Kopírovat odkaz" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3-3a4.5 4.5 0 0 0-6.4-6.4l-1 1"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3 3a4.5 4.5 0 0 0 6.4 6.4l1-1"/></svg></button>
+      <button class="ib" id="soundBtn" type="button" aria-label="Zvuk" title="Zvuk"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor"/><path id="soundWave" d="M15.5 9a4.2 4.2 0 0 1 0 6M18.3 6.5a8 8 0 0 1 0 11"/></svg></button>
+      <button class="ib" id="fsBtn" type="button" aria-label="Celá obrazovka" title="Celá obrazovka"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path id="fsIcon" d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+      <button class="ib" id="newBtn" type="button" aria-label="Nová výzva" title="Nová výzva" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+    </div>
+  </nav>
+
+  <section class="screen" id="setup" hidden>
+    <div class="panel">
+      <div class="duo"><div class="c ball" id="setupBall" data-m="happy"></div><div class="mini" id="setupMini"></div><div class="c cube" id="setupCube" data-m="idle"></div></div>
+      <h1>Čtyřka s otočkou</h1>
+      <p class="lead">Čtyři v řadě pro dva na jednom odkazu. Jednou za partii smíš místo tahu <b>otočit celou desku</b> a všechno se sesype.</p>
+      <form id="setupForm" autocomplete="off">
+        <label class="f">Jak se jmenuješ?<input id="nameX" maxlength="16" required placeholder="Tvoje jméno" enterkeyhint="next"></label>
+        <label class="f"><span>Koho vyzýváš? <span class="small" style="display:inline">(nepovinné)</span></span><input id="nameO" maxlength="16" placeholder="Jméno soupeře" enterkeyhint="go"></label>
+        <button class="btn" id="setupBtn" type="submit">Vyzvat soupeře</button>
+      </form>
+      <div class="recent" id="recent" hidden><h3>Rozehrané hry</h3><div id="recentList" class="recent"></div></div>
+      <button class="textlink" type="button" data-rules>Jak se hraje</button>
+    </div>
+  </section>
+
+  <section class="screen" id="share" hidden>
+    <div class="panel">
+      <div class="duo"><div class="c ball" id="shareBall" data-m="happy"></div><div class="mini" id="shareMini"></div><div class="c cube" id="shareCube" data-m="sad"></div></div>
+      <h2>Výzva je připravená</h2>
+      <p class="lead" id="shareLead"></p>
+      <div class="linkbox"><input id="shareLink" readonly aria-label="Odkaz na hru"><button class="btn" id="shareCopy" type="button">Kopírovat</button></div>
+      <button class="btn" id="shareSend" type="button">Poslat odkaz</button>
+      <button class="btn ghost" id="shareGo" type="button">Do hry<span id="shareGoSub"></span></button>
+      <div class="wait" aria-hidden="true"><i></i><i></i><i></i></div>
+      <p class="small" id="shareWait">Čekám, až soupeř přisedne…</p>
+    </div>
+  </section>
+
+  <section class="screen" id="intro" hidden>
+    <div class="panel">
+      <div class="duo"><div class="c ball" id="introBall" data-m="idle"></div><div class="mini" id="introMini"></div><div class="c cube" id="introCube" data-m="fall"></div></div>
+      <h2 id="introTitle"></h2>
+      <p class="lead">Čtyři v řadě s padajícími kameny. Jednou za partii smíš místo tahu <b>otočit celou desku o 90°</b> a všechno se sesype na novou podlahu.</p>
+      <form id="introForm" autocomplete="off">
+        <label class="f">Jak se jmenuješ?<input id="introName" maxlength="16" required placeholder="Tvoje jméno" enterkeyhint="go"></label>
+        <button class="btn" id="acceptBtn" type="submit">Přijmout výzvu</button>
+      </form>
+      <button class="btn ghost slim" id="introMine" type="button"></button>
+      <p class="small">Tahy se tu objeví samy. Klidně hrajte s hodinovými pauzami.</p>
+    </div>
+  </section>
+
+  <section class="screen" id="info" hidden>
+    <div class="panel" style="margin-top:12vh">
+      <h2 id="infoTitle"></h2>
+      <p class="lead" id="infoMeta"></p>
+      <button class="btn" id="infoRetry" type="button">Zkusit znovu</button>
+      <button class="btn ghost" id="infoNew" type="button">Založit novou hru</button>
+    </div>
+  </section>
+
+  <section class="game" id="game" hidden>
+    <header class="hud">
+      <div class="pl pl-x" id="plX"><div class="ava" id="avaX"></div><div class="pl-t"><b id="nmX"></b><span id="ttX"></span></div><em class="tok" id="tokX"></em></div>
+      <div class="mid"><div class="score" id="score"></div><div class="series" id="series"></div></div>
+      <div class="pl pl-o" id="plO"><div class="ava" id="avaO"></div><div class="pl-t"><b id="nmO"></b><span id="ttO"></span></div><em class="tok" id="tokO"></em></div>
+    </header>
+    <aside class="side side-x" id="sideX"><div class="big" id="bigX"></div><b id="snX"></b><div class="ttl" id="stX"></div><em class="tok" id="stokX"></em><div class="tl" id="slX"></div></aside>
+    <main class="stage" id="stage">
+      <div class="turnline" aria-live="polite"><strong id="turnTitle"></strong><span id="turnSub"></span></div>
+      <div class="boardbox" id="boardbox">
+        <div class="board" id="board">
+          <div class="grid" id="grid" role="grid" aria-label="Deska">
+            <div class="holes" id="holes"></div>
+            <svg class="fx" id="fx" aria-hidden="true"></svg>
+            <div class="stones" id="stones"></div>
+            <div class="hand off" id="hand" aria-hidden="true"></div>
+          </div>
+        </div>
+      </div>
+    </main>
+    <aside class="side side-o" id="sideO"><div class="big" id="bigO"></div><b id="snO"></b><div class="ttl" id="stO"></div><em class="tok" id="stokO"></em><div class="tl" id="slO"></div></aside>
+    <footer class="ctrl">
+      <button class="rot rot-l" id="rotL" type="button" aria-label="Otočit desku doleva"></button>
+      <div class="hint" id="hint" aria-live="polite"></div>
+      <button class="rot rot-r" id="rotR" type="button" aria-label="Otočit desku doprava"></button>
+    </footer>
+  </section>
+</div>
+
+<div class="sheet" id="rules" hidden>
+  <div role="dialog" aria-modal="true" aria-labelledby="rulesTitle">
+    <h2 id="rulesTitle">Jak se hraje</h2>
+    <ol>
+      <li>Střídáte se. Ve svém tahu <b>hodíš kámen do sloupce</b> a on spadne co nejníž.</li>
+      <li>Vyhrává, kdo má <b>čtyři své kameny v řadě</b>: vodorovně, svisle nebo šikmo.</li>
+      <li><b>Otočka:</b> jednou za partii smíš místo hodu otočit celou desku o 90° doleva nebo doprava. Všechno, co není přišroubované, se sesype na novou podlahu.</li>
+      <li>Když po otočce vznikne čtyřka jen jednomu, ten vyhrál. I kdyby to byl soupeř: otočkou se dá i darovat.</li>
+      <li>Když vznikne čtyřka <b>oběma naráz</b>, obě čtyřky vyletí z desky a zbytek se sesype znovu. Hraje se dál.</li>
+      <li>Každá partie je jiná: mění se <b>tvar desky</b> (7 × 6, 6 × 6, 5 × 7) a <b>překvapení</b>. Kdo prohrál, začíná další partii. Kdo prohrál dvakrát za sebou, má otočku navíc.</li>
+      <li>Série se hraje do tří vyhraných partií. Za vyhrané série sbíráš tituly: Oblázek, Šutr, Valoun, Balvan, Skála, Hora.</li>
+    </ol>
+    <div class="legend" id="legend"></div>
+    <button class="btn" id="rulesClose" type="button">Jasně, hrajem</button>
+  </div>
+</div>
+<div class="sheet" id="fsHint" hidden>
+  <div role="dialog" aria-modal="true" aria-labelledby="fsTitle">
+    <h2 id="fsTitle">Přes celou obrazovku</h2>
+    <ol>
+      <li>Klepni dole na <b>Sdílet</b> (čtvereček se šipkou).</li>
+      <li>Vyber <b>Přidat na plochu</b>.</li>
+      <li>Otevři Čtyřku z plochy. Poběží bez lišt, jako aplikace.</li>
+    </ol>
+    <button class="btn" id="fsHintClose" type="button">Rozumím</button>
+  </div>
+</div>
+<div class="toast" id="toast" role="status" hidden></div>
+<script type="module" src="src/app.js"></script>
+</body>
+</html>

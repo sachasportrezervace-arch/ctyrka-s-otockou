@@ -98,9 +98,8 @@ body.b .backdrop::before { content: ""; position: absolute; left: -10%; right: -
 /* desktop: souboj zleva a zprava, deska uprostřed, otočky u rohů desky */
 .side { display: none; }
 @media (min-width: 900px) {
-  .app { grid-template-columns: 1fr auto 1fr; grid-template-rows: auto 1fr; padding: 28px 40px; column-gap: 32px; }
+  .app { grid-template-columns: 1fr auto 1fr; grid-template-rows: auto 1fr auto; padding: 28px 40px; column-gap: 32px; }
   .hud { grid-column: 1 / -1; grid-template-columns: 1fr; justify-items: center; }
-  .stage { padding-bottom: 96px; }
   .hud .pl { display: none; }
   .score { font-size: 44px; }
   .series { font-size: 13px; }
@@ -115,8 +114,7 @@ body.b .backdrop::before { content: ""; position: absolute; left: -10%; right: -
   .side .tok i { width: 22px; height: 22px; }
   .side.is-off .big { transform: scale(.86); filter: saturate(.75); }
   .side .tag { font-size: 13px; font-weight: 800; padding: 6px 12px; border-radius: 99px; background: var(--text); color: var(--bg); }
-  .ctrl { position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%); width: min(560px, 44vw); grid-template-columns: 1fr 1fr; }
-  .app > .ctrl { grid-column: 2; }
+  .app > .ctrl { grid-column: 2; grid-row: 3; justify-self: center; width: min(560px, 44vw); padding-top: 18px; }
 }
 </style>
 <body>
@@ -174,7 +172,7 @@ function fit() {
   const desk = innerWidth >= 900;
   const n = Math.max(st.w, st.h) + .3;
   const turnH = document.querySelector(".turnline").offsetHeight;
-  const availW = desk ? innerWidth * .46 : stage.width, availH = desk ? innerHeight - 56 - 70 - turnH - 110 : stage.height - turnH - 24;
+  const availW = desk ? innerWidth * .46 : stage.width, availH = desk ? stage.height - turnH - 24 : stage.height - turnH - 24;
   const cell = Math.floor(Math.min(availW / n, availH / (n + 1.1), 104));
   document.body.style.setProperty("--cell", cell + "px");
   document.body.style.setProperty("--w", st.w); document.body.style.setProperty("--h", st.h);

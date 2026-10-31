@@ -30,12 +30,16 @@ export const nextTitle = n => { const t = [...TITLES].reverse().find(([min]) => 
 export function makeCfg({ start, bonus = [0, 0], rnd = Math.random, prev = null, board = null, mod = null }) {
   const pick = a => a[Math.floor(rnd() * a.length)];
   let b = board, m = mod;
-  for (let i = 0; i < 20 && (!b || !m || (prev && prev.b === b && prev.mod === m)); i++) {
+  // další partie má jinou desku i jiný modifikátor než dvě předchozí (pb/pm = zadání předminulé partie),
+  // takže tři partie za sebou mají tři různé desky a tři různá překvapení
+  const seen = prev ? { b: [prev.b, prev.pb], m: [prev.mod, prev.pm] } : { b: [], m: [] };
+  for (let i = 0; i < 60 && (!b || !m || seen.b.includes(b) || seen.m.includes(m)); i++) {
     b = board || pick(Object.keys(BOARDS));
     m = mod || pick(Object.keys(MODS));
   }
   const { w, h } = BOARDS[b];
   const cfg = { b, w, h, mod: m, s: start, rot: [1 + bonus[0], 1 + bonus[1]], rocks: [], peb: [] };
+  if (prev) { cfg.pb = prev.b; cfg.pm = prev.mod; }
   if (m === "otocky") cfg.rot = cfg.rot.map(n => n + 1);
   if (m === "kotva") {
     // kotva nikdy na kraji ani ve spodní a horní řadě: aby pod ní zbylo místo, které odhalí až otočka
@@ -54,6 +58,7 @@ export function validCfg(c) {
   const { w, h } = BOARDS[c.b];
   const intIn = (v, n) => Number.isInteger(v) && v >= 0 && v < n;
   return c.w === w && c.h === h && (c.s === "x" || c.s === "o")
+    && (c.pb === undefined || !!BOARDS[c.pb]) && (c.pm === undefined || !!MODS[c.pm])
     && Array.isArray(c.rot) && c.rot.length === 2 && c.rot.every(n => intIn(n, 6))
     && Array.isArray(c.rocks) && c.rocks.length <= 2 && c.rocks.every(i => intIn(i, w * h))
     && Array.isArray(c.peb) && c.peb.length <= 3 && c.peb.every(i => intIn(i, w));
