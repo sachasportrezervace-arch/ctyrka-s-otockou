@@ -8,7 +8,7 @@ Oprava: klik počká na doběhnutí animace (max ~6 s), `soloBusy` brání dvoji
 Sólo: `#solo` i tlačítko „Zkusit sám“, bot Kostkobot (vyhraje / zablokuje / nedaruje, občas otočí), HUD „Trénink“, na konci „Znovu“ + „Vyzvat soupeře“, žádný sync.
 Ověřeno (příkaz → exit): `node tests/solo.mjs` → 14 PASS, exit 0 (Chromium 1440×900 přes tlačítko, WebKit iPhone 13 přes `#solo`, celá partie s botem, Znovu = jiná deska, 0 požadavků na mantledb, bez chyb v konzoli);
 `node tests/engine.test.mjs` → 36 PASS, exit 0; `node tests/net.test.mjs` → 11 PASS, exit 0; `node tests/e2e.mjs http://127.0.0.1:8809/` → 25 PASS, exit 0.
-Živý test viz níže (po nasazení). NEOVĚŘENO: sólo na skutečném iPhonu; po konci partie na dotyku zůstává u desky „duch“ kostky z posledního náhledu (kosmetika, nezkoumáno).
+Nasazeno (push `f1e77f4`, Pages built). Živý test: `node tests/solo.mjs https://sachasportrezervace-arch.github.io/ctyrka-s-otockou/` → 14 PASS, exit 0 (snímky `design/shots/live-4*`). NEOVĚŘENO: sólo na skutečném iPhonu; po konci partie na dotyku zůstává u desky „duch“ kostky z posledního náhledu (kosmetika, nezkoumáno).
 
 ## 31. 10. 2026 (session účet P, převzato po přerušení 17:43)
 Hotovo:
