@@ -1,5 +1,5 @@
 // Čtyřka s otočkou – obrazovky, sdílená hra a animace. Pravidla jsou v engine.js, síť v net.js, kresby v art.js.
-import { replay, makeCfg, nextGame, tally, other, titleFor, BOARDS, MODS, SERIES_TO, canDrop, landRow, ROCK, X, O } from "./engine.js";
+import { replay, step, makeCfg, nextGame, tally, other, titleFor, BOARDS, MODS, SERIES_TO, canDrop, landRow, ROCK, X, O } from "./engine.js";
 import { loadDoc, saveDoc, store, randId, deviceToken, decode, roleFor } from "./net.js";
 import { stoneSVG, teamSVG, ballSVG, cubeSVG, pebbleSVG, rockSVG, turnIcon } from "./art.js";
 
@@ -62,7 +62,7 @@ function setView(v) {
   document.body.dataset.view = v;
   for (const id of ["setup", "share", "intro", "info", "game"]) $(id).hidden = id !== (v === "play" ? "game" : v);
   $("newBtn").hidden = v === "setup";
-  $("linkBtn").hidden = !(room && g && (v === "play"));
+  $("linkBtn").hidden = !(room && !room.solo && g && (v === "play"));
   render();
   if (v === "play") requestAnimationFrame(fit);
 }
@@ -136,6 +136,8 @@ function renderHud() {
     const on = !o && st.turn === p;
     $("pl" + P).classList.toggle("is-turn", on); $("side" + P).classList.toggle("is-turn", on);
   }
+  if (room && room.solo) { $("score").textContent = "Trénink"; $("score").style.fontSize = "22px"; $("series").textContent = "proti botovi, nic se nepočítá"; return; }
+  $("score").style.fontSize = "";
   $("score").innerHTML = `${t.sw[0]}<i>:</i>${t.sw[1]}`;
   $("score").setAttribute("aria-label", `Série: ${nameOf("x")} ${t.sw[0]}, ${nameOf("o")} ${t.sw[1]}`);
   $("series").textContent = `Partie ${g.n} · série do ${SERIES_TO}`;
@@ -164,10 +166,10 @@ function renderTurn() {
     sub = room.so || me === "o" ? "Tah se tu objeví sám." : "Pošli odkaz, ať si přisedne.";
   }
   // na začátku partie: co je dnes jinak
-  if (!o && st.ply < 2 && (me === "x" || me === "o") && g.n > 1) {
+  if (!o && st.ply < 2 && (me === "x" || me === "o") && (g.n > 1 || room.solo)) {
     const c = g.cfg, mod = MODS[c.mod];
     sub = `<b>Partie ${g.n}: ${cfgLabel(c)}${c.mod !== "klid" ? " · " + mod.name : ""}.</b> ${c.mod !== "klid" ? mod.hint : g.n === 1 ? "Klasika na rozehřátí." : mod.hint}`;
-    if (g.n > 1 && st.ply === 0) {
+    if ((g.n > 1 || room.solo) && st.ply === 0) {
       sub += st.turn === me ? " Začínáš ty." : ` Začíná ${esc(nameOf(st.turn))}.`;
       const extra = ["x", "o"].filter((p, i) => c.rot[i] - 1 - (c.mod === "otocky" ? 1 : 0) > 0);
       for (const p of extra) sub += p === me ? " Za dvě prohry máš otočku navíc." : ` ${esc(nameOf(p))} má za dvě prohry otočku navíc.`;
@@ -189,7 +191,11 @@ function renderCtrl() {
   const h = $("hint");
   if (o) {
     const t = scoreNow();
-    if (me === "x" || me === "o") {
+    if (room && room.solo) {
+      h.innerHTML = `<div class="row" style="margin:0"><button class="btn slim" id="soloAgain" type="button" style="width:auto">Znovu</button><button class="btn ghost slim" id="soloChallenge" type="button" style="width:auto">Vyzvat soupeře</button></div>`;
+      $("soloAgain").onclick = soloAgain;
+      $("soloChallenge").onclick = goHome;
+    } else if (me === "x" || me === "o") {
       h.innerHTML = `<button class="btn" id="againBtn" type="button">${t.seriesWon ? "Nová série" : "Odveta"}<span>${nextLine(o)}</span></button>`;
       $("againBtn").disabled = busy || animating;
       $("againBtn").onclick = rematch;
@@ -489,6 +495,7 @@ async function play(mv) {
   sel = null; armed = null;
   // animace běží hned, zápis souběžně; když neprojde, deska se srovná podle serveru
   setG(next);
+  if (room.solo) { render(); await playMoves(basePly); botTurn(); return; }
   const saving = commit(next, cur => cur.n === base.n && cur.m.length === basePly, "Mezitím se hra změnila, tah se nezapsal.");
   render();
   await playMoves(basePly);
@@ -597,7 +604,7 @@ async function poll() {
   }
   schedule(interval());
 }
-function wake() { if (room && !document.hidden) { lastChange = Date.now(); poll(); } }
+function wake() { if (room && !room.solo && !document.hidden) { lastChange = Date.now(); poll(); } }
 document.addEventListener("visibilitychange", wake);
 addEventListener("pageshow", e => { if (e.persisted) wake(); });
 addEventListener("online", wake);
@@ -654,11 +661,63 @@ $("linkBtn").addEventListener("click", () => room && !room.so ? sendLink() : cop
 // ---------- rozehrané hry na tomhle zařízení ----------
 function recentRooms() { return attempt(() => JSON.parse(store.get("c4-rooms") || "[]"), []).filter(r => r && /^[0-9a-z]{6,24}$/.test(r.id)); }
 function remember() {
-  if (!room || !g) return;
+  if (!room || room.solo || !g) return;
   const list = recentRooms().filter(r => r.id !== room.id);
   list.unshift({ id: room.id, x: g.x, o: g.o, me });
   store.set("c4-rooms", JSON.stringify(list.slice(0, 5)));
 }
+
+// ---------- sólo: trénink proti botovi ----------
+// Jen v tomhle prohlížeči: žádná místnost, žádný zápis ani dotazování, nic se nepočítá do série ani titulů.
+// Desky a překvapení se losují stejně jako v ostré hře, začínající se střídá.
+function startSolo(prevCfg = null) {
+  clearTimeout(pollT); bootSeq++;
+  room = { id: "solo", v: 0, sx: device, so: "bot", solo: true }; me = "x";
+  busy = false; net = ""; sel = null; armed = null;
+  stEl.forEach(el => el.remove()); stEl.clear();
+  setG({ x: store.get("c4-name") || "Ty", o: "Kostkobot", n: 1, cfg: makeCfg({ start: prevCfg ? other(prevCfg.s) : "x", prev: prevCfg }), m: [], sw: [0, 0], sc: [0, 0], ls: [0, 0] });
+  if (location.hash !== "#solo") history.replaceState(null, "", location.pathname + location.search + "#solo");
+  setView("play"); fit(); render();
+  botTurn();
+}
+async function soloAgain() {
+  if (animating) return;
+  animating = true;
+  try { await clearBoard(); } finally { animating = false; }
+  startSolo(g.cfg);
+}
+// bot: vyhraje, když může (i otočkou); jinak zablokuje; nehraje tah, po kterém by soupeř hned vyhrál; rád střed, s náhodou
+function botMove(st) {
+  const me = st.turn, opp = other(me), all = s => [...Array(s.w).keys()].map(String);
+  const cols = all(st).filter(m => step(st, m));
+  const winsFor = (s, who) => all(s).filter(m => { const r = step({ ...s, turn: who }, m); return r && r.st.over && r.st.over.who === who; });
+  const win = cols.find(m => step(st, m).st.over?.who === me);
+  if (win) return win;
+  const turns = st.rot[me] ? ["L", "R"].filter(d => step(st, d)) : [];
+  const turnWin = turns.find(d => step(st, d).st.over?.who === me);
+  if (turnWin) return turnWin;
+  const block = winsFor(st, opp).find(m => cols.includes(m));
+  if (block) return block;
+  const safe = cols.filter(m => { const r = step(st, m); return !r.st.over && !winsFor(r.st, opp).length; });
+  // občas otočí, ať je vidět, co otočka umí, ale jen když tím nic nedaruje
+  if (st.ply > 7 && Math.random() < .18) {
+    const ok = turns.filter(d => { const r = step(st, d); return !r.st.over && !winsFor(r.st, opp).length; });
+    if (ok.length) return ok[Math.floor(Math.random() * ok.length)];
+  }
+  const pool = safe.length ? safe : cols, mid = (st.w - 1) / 2;
+  return pool.map(m => [m, Math.abs(m - mid) + Math.random() * 2.2]).sort((a, b) => a[1] - b[1])[0][0];
+}
+async function botTurn() {
+  if (!room || !room.solo || !g || over() || S().turn !== "o") return;
+  const game = g;
+  await wait(650 + Math.random() * 450);
+  if (g !== game || !room || !room.solo || animating) return;
+  const base = g.m.length;
+  setG({ ...g, m: [...g.m, botMove(S())] });
+  render();
+  await playMoves(base);
+}
+$("soloBtn").addEventListener("click", () => startSolo());
 
 // ---------- založení ----------
 $("setupForm").addEventListener("submit", async ev => {
@@ -764,6 +823,7 @@ function boot() {
   room = null; me = null; busy = false; net = ""; fails = 0; sel = null; armed = null;
   stEl.forEach(el => el.remove()); stEl.clear();
   const h = (location.hash || "").replace(/^#/, "");
+  if (h === "solo") { startSolo(); return; }
   const r = /^r\.([0-9a-z]{6,24})$/.exec(h);
   if (r) { openRoom(r[1], seq); return; }
   g = null; rp = null; showSetup();
