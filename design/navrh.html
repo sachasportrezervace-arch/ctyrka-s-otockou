@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="cs">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Čtyřka s otočkou – návrh</title>
+<style>
+@font-face { font-family: "Bagel Fat One"; font-weight: 400; src: url("../fonts/bf-400-latin.woff2") format("woff2"); unicode-range: U+0000-00FF, U+2000-206F; }
+@font-face { font-family: "Bagel Fat One"; font-weight: 400; src: url("../fonts/bf-400-latin-ext.woff2") format("woff2"); unicode-range: U+0100-02FF; }
+@font-face { font-family: "Rammetto One"; font-weight: 400; src: url("../fonts/ro-400-latin.woff2") format("woff2"); unicode-range: U+0000-00FF, U+2000-206F; }
+@font-face { font-family: "Rammetto One"; font-weight: 400; src: url("../fonts/ro-400-latin-ext.woff2") format("woff2"); unicode-range: U+0100-02FF; }
+@font-face { font-family: "Figtree"; font-weight: 500; src: url("../fonts/ft-500-latin.woff2") format("woff2"); unicode-range: U+0000-00FF, U+2000-206F; }
+@font-face { font-family: "Figtree"; font-weight: 500; src: url("../fonts/ft-500-latin-ext.woff2") format("woff2"); unicode-range: U+0100-02FF; }
+@font-face { font-family: "Figtree"; font-weight: 700; src: url("../fonts/ft-700-latin.woff2") format("woff2"); unicode-range: U+0000-00FF, U+2000-206F; }
+@font-face { font-family: "Figtree"; font-weight: 700; src: url("../fonts/ft-700-latin-ext.woff2") format("woff2"); unicode-range: U+0100-02FF; }
+@font-face { font-family: "Figtree"; font-weight: 800; src: url("../fonts/ft-800-latin.woff2") format("woff2"); unicode-range: U+0000-00FF, U+2000-206F; }
+@font-face { font-family: "Figtree"; font-weight: 800; src: url("../fonts/ft-800-latin-ext.woff2") format("woff2"); unicode-range: U+0100-02FF; }
+
+/* A „Plakát“: slunečnicová plocha, kobaltová deska, rajčatové kuličky a mléčné kostky */
+body.a {
+  --bg: #FFC93E; --bg-2: #F5B526; --text: #1C1F4A; --muted: #6B5420;
+  --plate: #2847C9; --plate-dk: #1A2F96; --hole: #142272;
+  --x: #F2492F; --x-dk: #C9321D; --o: #FFF6E6; --o-dk: #D9CCB4;
+  --ink: #1C1F4A; --tongue: #FF8A7A; --sweat: #8FD6FF;
+  --peb: #A7A3B8; --peb-dk: #85819A; --rock: #7C7790; --rock-dk: #5B5670; --bolt: #E6E1D2;
+  --btn: #1C1F4A; --btn-text: #FFF6E6; --chip: #FFF6E6;
+  --display: "Bagel Fat One", system-ui;
+}
+/* B „Noc“: inkoustová fialová, tyrkysová deska, korálové kuličky a citronové kostky */
+body.b {
+  --bg: #211A3D; --bg-2: #2B2350; --text: #F6F0FF; --muted: #A79CC9;
+  --plate: #19A39A; --plate-dk: #10766F; --hole: #0B4743;
+  --x: #FF6A4D; --x-dk: #D6482F; --o: #FFD84D; --o-dk: #D9AE1E;
+  --ink: #221637; --tongue: #FF9C8C; --sweat: #9EDCFF;
+  --peb: #B3ABC9; --peb-dk: #8C84A6; --rock: #6E6690; --rock-dk: #514971; --bolt: #E5DEF5;
+  --btn: #F6F0FF; --btn-text: #211A3D; --chip: #2E2654;
+  --display: "Rammetto One", system-ui;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; }
+body { background: var(--bg); color: var(--text); font: 500 16px/1.35 "Figtree", system-ui, sans-serif; overflow: hidden; }
+.app { height: 100dvh; display: grid; grid-template-rows: auto 1fr auto; padding: max(12px, env(safe-area-inset-top)) 16px max(14px, env(safe-area-inset-bottom)); position: relative; isolation: isolate; }
+
+/* pozadí: velké ploché tvary, žádný šum */
+.backdrop { position: absolute; inset: 0; z-index: -1; overflow: hidden; }
+body.a .backdrop::before { content: ""; position: absolute; left: 50%; top: 52%; width: 150vmax; height: 150vmax; border-radius: 50%; background: var(--bg-2); transform: translate(-50%, 18%); }
+body.b .backdrop::before { content: ""; position: absolute; left: -10%; right: -10%; bottom: -30vh; height: 62vh; border-radius: 50% 50% 0 0; background: var(--bg-2); }
+
+/* HUD: dva hráči a skóre série */
+.hud { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; }
+.pl { display: flex; align-items: center; gap: 9px; min-width: 0; }
+.pl-o { flex-direction: row-reverse; text-align: right; }
+.ava { width: 44px; height: 44px; flex: none; position: relative; }
+.ava svg { width: 100%; height: 100%; display: block; }
+.pl-t { min-width: 0; display: grid; }
+.pl-t b { font-weight: 800; font-size: 17px; letter-spacing: -.01em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pl-t span { font-size: 12.5px; font-weight: 700; color: var(--muted); display: flex; align-items: center; gap: 5px; }
+.pl-o .pl-t span { justify-content: flex-end; }
+.tok { display: inline-flex; gap: 3px; }
+.tok i { width: 15px; height: 15px; display: block; color: var(--text); }
+.tok i.used { opacity: .25; }
+.tok svg { width: 100%; height: 100%; display: block; }
+.pl.is-turn .ava { animation: bob 1.6s ease-in-out infinite; }
+.pl.is-turn .pl-t b::after { content: ""; display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: currentColor; margin-left: 6px; vertical-align: 2px; }
+@keyframes bob { 50% { transform: translateY(-3px); } }
+.mid { text-align: center; }
+.score { font-family: var(--display); font-size: 30px; line-height: 1; letter-spacing: .02em; }
+.score i { font-style: normal; opacity: .45; padding: 0 3px; }
+.series { font-size: 11.5px; font-weight: 700; color: var(--muted); margin-top: 3px; white-space: nowrap; }
+
+/* střed: deska */
+.stage { display: grid; grid-template-rows: auto 1fr; justify-items: center; min-height: 0; position: relative; }
+.turnline { text-align: center; padding-top: 6px; }
+.boardwrap { align-self: center; margin-top: calc(var(--cell) * 1.05); }
+.turnline strong { font-family: var(--display); font-weight: 400; font-size: clamp(26px, 7.4vw, 34px); line-height: 1.05; display: block; }
+.turnline span { font-size: 14px; font-weight: 700; color: var(--muted); }
+.boardwrap { position: relative; }
+.board { position: relative; background: var(--plate); border-radius: calc(var(--cell) * .34); box-shadow: 0 calc(var(--cell) * .16) 0 var(--plate-dk); padding: calc(var(--cell) * .14); }
+.grid { position: relative; width: calc(var(--w) * var(--cell)); height: calc(var(--h) * var(--cell)); }
+.hole { position: absolute; width: calc(var(--cell) * .8); height: calc(var(--cell) * .8); margin: calc(var(--cell) * .1); border-radius: 50%; background: var(--hole); }
+.st { position: absolute; width: calc(var(--cell) * .88); height: calc(var(--cell) * .88); margin: calc(var(--cell) * .06); }
+.st svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.f > g { display: none; }
+[data-m="idle"] .f-idle, [data-m="fall"] .f-fall, [data-m="happy"] .f-happy, [data-m="sad"] .f-sad, [data-m="dizzy"] .f-dizzy { display: inline; }
+.hand { position: absolute; width: calc(var(--cell) * .88); height: calc(var(--cell) * .88); top: calc(var(--cell) * -1.05); }
+.hand svg { width: 100%; height: 100%; display: block; }
+.hand::after { content: ""; position: absolute; left: 50%; bottom: calc(var(--cell) * -.2); width: 0; height: 0; border: 7px solid transparent; border-top: 9px solid var(--text); transform: translateX(-50%); opacity: .5; }
+.zz { position: absolute; font: 400 calc(var(--cell) * .2)/1 var(--display); color: var(--text); opacity: .7; transform: translate(calc(var(--cell) * .66), calc(var(--cell) * -.06)); }
+
+/* ovládání: otočky */
+.ctrl { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding-top: 10px; }
+.rot { appearance: none; border: 0; border-radius: 18px; padding: 10px 14px; white-space: nowrap; background: var(--btn); color: var(--btn-text); font: 800 15.5px/1.15 "Figtree", sans-serif; display: flex; align-items: center; gap: 10px; min-height: 58px; }
+.rot svg { width: 30px; height: 30px; flex: none; }
+.rot-r { flex-direction: row-reverse; text-align: right; }
+.rot small { display: block; font-weight: 700; font-size: 12px; opacity: .65; }
+.ctrl-note { grid-column: 1 / -1; text-align: center; font-size: 12.5px; font-weight: 700; color: var(--muted); }
+.menu { position: absolute; top: max(12px, env(safe-area-inset-top)); right: 16px; display: none; }
+
+/* desktop: souboj zleva a zprava, deska uprostřed, otočky u rohů desky */
+.side { display: none; }
+@media (min-width: 900px) {
+  .app { grid-template-columns: 1fr auto 1fr; grid-template-rows: auto 1fr; padding: 28px 40px; column-gap: 32px; }
+  .hud { grid-column: 1 / -1; grid-template-columns: 1fr; justify-items: center; }
+  .stage { padding-bottom: 96px; }
+  .hud .pl { display: none; }
+  .score { font-size: 44px; }
+  .series { font-size: 13px; }
+  .stage { grid-column: 2; }
+  .turnline { top: 0; }
+  .turnline strong { font-size: 36px; }
+  .side { display: grid; align-content: center; justify-items: center; gap: 10px; text-align: center; }
+  .side .big { width: min(15vw, 190px); aspect-ratio: 1; }
+  .side .big svg { width: 100%; height: 100%; display: block; }
+  .side b { font-family: var(--display); font-weight: 400; font-size: 30px; line-height: 1; }
+  .side .ttl { font-size: 14px; font-weight: 800; color: var(--muted); letter-spacing: .02em; }
+  .side .tok i { width: 22px; height: 22px; }
+  .side.is-off .big { transform: scale(.86); filter: saturate(.75); }
+  .side .tag { font-size: 13px; font-weight: 800; padding: 6px 12px; border-radius: 99px; background: var(--text); color: var(--bg); }
+  .ctrl { position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%); width: min(560px, 44vw); grid-template-columns: 1fr 1fr; }
+  .app > .ctrl { grid-column: 2; }
+}
+</style>
+<body>
+<div class="app">
+  <div class="backdrop"></div>
+  <header class="hud">
+    <div class="pl pl-x is-turn"><div class="ava" id="avaX"></div><div class="pl-t"><b>Mark</b><span>Šutr <em class="tok" id="tokX"></em></span></div></div>
+    <div class="mid"><div class="score">2<i>:</i>1</div><div class="series">Partie 4 · Kostka · Kotva</div></div>
+    <div class="pl pl-o"><div class="ava" id="avaO"></div><div class="pl-t"><b>Radka</b><span><em class="tok" id="tokO"></em> Oblázek</span></div></div>
+  </header>
+  <aside class="side side-x" style="grid-column:1;grid-row:2"><div class="big" id="bigX"></div><b>Mark</b><div class="ttl">Šutr · otočky</div><div class="tok" id="tokX2"></div><div class="tag">Na tahu</div></aside>
+  <main class="stage">
+    <div class="turnline"><strong>Tvůj tah</strong><span>Hoď kuličku, nebo otoč desku</span></div>
+    <div class="boardwrap" id="bw"><div class="hand" id="hand"></div><div class="board"><div class="grid" id="grid"></div></div></div>
+  </main>
+  <aside class="side side-o is-off" style="grid-column:3;grid-row:2"><div class="big" id="bigO"></div><b>Radka</b><div class="ttl">Oblázek · otočky</div><div class="tok" id="tokO2"></div></aside>
+  <footer class="ctrl">
+    <button class="rot rot-l" id="rotL"><span><span class="lbl">Otočit doleva</span><small>sesype se dolů</small></span></button>
+    <button class="rot rot-r" id="rotR"><span><span class="lbl">Otočit doprava</span><small>máš 1 otočku</small></span></button>
+  </footer>
+</div>
+<script type="module">
+import { replay } from "../src/engine.js";
+import { stoneSVG, teamSVG, turnIcon } from "../src/art.js";
+const d = new URLSearchParams(location.search).get("d") || "a";
+document.body.className = d;
+const cfg = { b: "kostka", w: 6, h: 6, mod: "kotva", s: "x", rot: [1, 1], rocks: [2 * 6 + 4], peb: [] };
+const r = replay(cfg, ["2", "3", "3", "4", "2", "2", "1", "R", "3", "1", "0"]);
+const st = r.st;
+const $ = id => document.getElementById(id);
+$("avaX").innerHTML = teamSVG("x"); $("avaO").innerHTML = teamSVG("o");
+$("bigX").innerHTML = teamSVG("x"); $("bigO").innerHTML = teamSVG("o");
+$("avaX").dataset.m = "idle"; $("avaO").dataset.m = "sad"; $("bigX").dataset.m = "happy"; $("bigO").dataset.m = "sad";
+const tok = (n, used) => Array.from({ length: n + used }, (_, i) => `<i class="${i >= n ? "used" : ""}">${turnIcon("R")}</i>`).join("");
+$("tokX").innerHTML = tok(1, 0); $("tokO").innerHTML = tok(0, 1); $("tokX2").innerHTML = tok(1, 0); $("tokO2").innerHTML = tok(0, 1);
+$("rotL").insertAdjacentHTML("afterbegin", turnIcon("L")); $("rotR").insertAdjacentHTML("afterbegin", turnIcon("R"));
+const g = $("grid");
+let html = "";
+for (let i = 0; i < st.w * st.h; i++) {
+  const x = i % st.w, y = Math.floor(i / st.w);
+  html += `<div class="hole" style="left:calc(${x} * var(--cell));top:calc(${y} * var(--cell))"></div>`;
+}
+const moods = ["idle", "idle", "dizzy", "idle", "sad", "idle", "idle", "idle"];
+let k = 0;
+for (let i = 0; i < st.w * st.h; i++) {
+  const v = st.cells[i]; if (!v) continue;
+  const x = i % st.w, y = Math.floor(i / st.w);
+  html += `<div class="st" data-m="${v > 2 ? "idle" : moods[k++ % moods.length]}" style="left:calc(${x} * var(--cell));top:calc(${y} * var(--cell))">${stoneSVG(v)}</div>`;
+  if (v === 4) html += `<div class="zz" style="display:none"></div>`;
+}
+g.innerHTML = html;
+$("hand").innerHTML = teamSVG("x"); $("hand").dataset.m = "fall";
+function fit() {
+  const stage = document.querySelector(".stage").getBoundingClientRect();
+  const desk = innerWidth >= 900;
+  const n = Math.max(st.w, st.h) + .3;
+  const turnH = document.querySelector(".turnline").offsetHeight;
+  const availW = desk ? innerWidth * .46 : stage.width, availH = desk ? innerHeight - 56 - 70 - turnH - 110 : stage.height - turnH - 24;
+  const cell = Math.floor(Math.min(availW / n, availH / (n + 1.1), 104));
+  document.body.style.setProperty("--cell", cell + "px");
+  document.body.style.setProperty("--w", st.w); document.body.style.setProperty("--h", st.h);
+  $("hand").style.left = `calc(${2} * var(--cell) + var(--cell) * .14 + var(--cell) * .06)`;
+}
+fit(); addEventListener("resize", fit);
+document.fonts.ready.then(() => document.body.dataset.ready = "1");
+</script>
+</body>
+</html>
