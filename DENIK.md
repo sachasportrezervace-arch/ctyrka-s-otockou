@@ -2,15 +2,13 @@ PŘEVZATO 31. 10. – dodělává session na účtu P, jiná session sem nepíš
 
 # Deník – Čtyřka s otočkou
 
-## PŘEDÁVKA 31. 10. večer – sólo režim (zadání `react-apps/HRY-SOLO-2026-10-31.md`), kontext plný
-Hotovo (lokální commit, NEPUSHNUTO): sólo v `src/app.js` (blok „sólo: trénink proti botovi“: `startSolo`, `soloAgain`, `botMove`, `botTurn`),
-`#solo` v `boot()`, tlačítko „Zkusit sám“ (`#soloBtn` v `index.html`), HUD „Trénink“, na konci „Znovu“ + „Vyzvat soupeře“, žádný sync (room.solo, guardy v wake/remember/play).
-Test `node tests/solo.mjs` (server `node tools/serve.cjs 8809`): desktop 4 PASS (Zkusit sám, Trénink, partie s botem dohraná, tlačítka na konci).
-SELHÁVÁ: „Znovu“ nezačne novou partii. Handler `soloAgain` se zavolá (přímé `onclick()` doběhne bez chyby), ale `__c4.g.m` zůstane stará
-→ podezření: `soloAgain` vrátí hned kvůli `animating === true`, nebo `startSolo` nepřepíše `g`. První krok: v `soloAgain` dočasně `console.log(animating)`
-a ověřit; v `tests/solo.mjs` jsou dočasné ladicí výpisy („pod tlačítkem“, „onclick:“) – po opravě vrátit klik `p.click("#soloAgain")` / `p.tap`.
-Pak: `node tests/solo.mjs` (desktop + iPhone zelené), `node tests/engine.test.mjs`, `node tests/net.test.mjs`, `npm run e2e` dál zelené → push → `node tests/solo.mjs https://sachasportrezervace-arch.github.io/ctyrka-s-otockou/`
-→ výsledek poslat session „Tři nové hry“ (local_b92f9f03-e59a-429f-8d13-6bcd213a042b).
+## 31. 10. 2026 večer – sólo režim hotov (zadání `react-apps/HRY-SOLO-2026-10-31.md`)
+Příčina chyby „Znovu“: tlačítko se objeví už při dohrávání poslední animace, `soloAgain` při `animating === true` hned skončil a klik se zahodil.
+Oprava: klik počká na doběhnutí animace (max ~6 s), `soloBusy` brání dvojitému spuštění, pak se vyčistí deska a `startSolo(g.cfg)` dá jinou desku i překvapení.
+Sólo: `#solo` i tlačítko „Zkusit sám“, bot Kostkobot (vyhraje / zablokuje / nedaruje, občas otočí), HUD „Trénink“, na konci „Znovu“ + „Vyzvat soupeře“, žádný sync.
+Ověřeno (příkaz → exit): `node tests/solo.mjs` → 14 PASS, exit 0 (Chromium 1440×900 přes tlačítko, WebKit iPhone 13 přes `#solo`, celá partie s botem, Znovu = jiná deska, 0 požadavků na mantledb, bez chyb v konzoli);
+`node tests/engine.test.mjs` → 36 PASS, exit 0; `node tests/net.test.mjs` → 11 PASS, exit 0; `node tests/e2e.mjs http://127.0.0.1:8809/` → 25 PASS, exit 0.
+Živý test viz níže (po nasazení). NEOVĚŘENO: sólo na skutečném iPhonu; po konci partie na dotyku zůstává u desky „duch“ kostky z posledního náhledu (kosmetika, nezkoumáno).
 
 ## 31. 10. 2026 (session účet P, převzato po přerušení 17:43)
 Hotovo:

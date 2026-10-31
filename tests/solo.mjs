@@ -49,8 +49,7 @@ async function run(browser, ctxOpt, label, touch, viaButton) {
   await p.waitForSelector("#soloAgain", { timeout: 8000 });
   check(`${label}: na konci Znovu a Vyzvat soupeře`, await p.isVisible("#soloAgain") && await p.isVisible("#soloChallenge"));
   await p.screenshot({ path: path.join(shots, `${tag}41-solo-konec-${label}.png`) });
-  const hit = await p.evaluate(() => { const b = document.getElementById("soloAgain").getBoundingClientRect(); const e = document.elementFromPoint(b.x + b.width / 2, b.y + b.height / 2); return e ? e.id || e.className : "nic"; }); console.log("pod tlačítkem Znovu je:", hit);
-  console.log("onclick:", await p.evaluate(async () => { const f = document.getElementById("soloAgain").onclick; try { await f(); return "ok " + typeof f + " " + __c4.g.m.length; } catch (e) { return "chyba " + e.message; } }));
+  await (touch ? p.tap("#soloAgain") : p.click("#soloAgain"));
   await p.waitForFunction(() => __c4.g && __c4.g.m.length <= 1 && !__c4.animating, null, { timeout: 10000 })
     .catch(async e => { console.log("stav po Znovu:", JSON.stringify(await p.evaluate(() => ({ m: __c4.g.m, a: __c4.animating, v: __c4.view, h: location.hash }))), errors); throw e; });
   const cfg2 = (await state(p)).g.cfg;

@@ -680,11 +680,18 @@ function startSolo(prevCfg = null) {
   setView("play"); fit(); render();
   botTurn();
 }
+let soloBusy = false;
 async function soloAgain() {
-  if (animating) return;
-  animating = true;
-  try { await clearBoard(); } finally { animating = false; }
-  startSolo(g.cfg);
+  if (soloBusy) return;
+  soloBusy = true;
+  try {
+    // tlačítko je vidět už při dohrávání poslední animace; klik počká, až doběhne, a nezahodí se
+    for (let i = 0; animating && i < 100; i++) await wait(60);
+    if (!room || !room.solo) return;
+    animating = true;
+    try { await clearBoard(); } finally { animating = false; }
+    startSolo(g.cfg);
+  } finally { soloBusy = false; }
 }
 // bot: vyhraje, když může (i otočkou); jinak zablokuje; nehraje tah, po kterém by soupeř hned vyhrál; rád střed, s náhodou
 function botMove(st) {
