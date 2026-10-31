@@ -157,7 +157,8 @@ function renderTurn() {
     title = `${nameOf(st.turn)} je na tahu`; sub = `Díváš se: ${nameOf("x")} × ${nameOf("o")}`;
   } else if (st.turn === me) {
     title = st.ply === 0 && g.n === 1 ? "Začínáš" : "Tvůj tah";
-    sub = st.rot[me] ? "Hoď do sloupce, nebo otoč desku." : "Hoď do sloupce. Otočku už nemáš.";
+    // v prvních tazích radí spodní nápověda u ovládání, nahoře by se opakovala
+    sub = st.ply < 2 ? "" : st.rot[me] ? "Hoď do sloupce, nebo otoč desku." : "Hoď do sloupce. Otočku už nemáš.";
   } else {
     title = room.so || me === "o" ? `${nameOf(st.turn)} je na tahu` : "Čekáme na soupeře";
     sub = room.so || me === "o" ? "Tah se tu objeví sám." : "Pošli odkaz, ať si přisedne.";

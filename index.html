@@ -133,7 +133,7 @@ label.f input:focus { box-shadow: 0 0 0 3px rgba(28, 31, 74, .2); }
 @media (max-width: 899px) { body[data-view="play"] .brand { visibility: hidden; } }
 .app { overflow: hidden; }
 
-.stage { display: grid; grid-template-rows: auto 1fr; justify-items: center; min-height: 0; position: relative; }
+.stage { display: grid; grid-template-rows: auto auto; align-content: center; justify-items: center; min-height: 0; position: relative; }
 .turnline { text-align: center; padding-top: 4px; min-height: 64px; display: grid; align-content: start; gap: 3px; }
 .turnline strong { font: 400 clamp(24px, 6.8vw, 32px)/1.05 var(--display); display: block; }
 .turnline span { font-size: 14px; font-weight: 700; color: var(--muted); max-width: 36ch; justify-self: center; }
@@ -199,6 +199,10 @@ label.f input:focus { box-shadow: 0 0 0 3px rgba(28, 31, 74, .2); }
   .turnline strong { font-size: 36px; }
   .side { display: grid; grid-row: 2; align-content: center; justify-items: center; gap: 8px; text-align: center; padding-top: 70px; }
   .turnline { min-height: 0; }
+  .turnline span { font-size: 17px; }
+  .series { font-size: 15px; }
+  .hint { font-size: 17px; }
+  .side .ttl, .side .tl { font-size: 15px; }
   .boardbox { margin-top: calc(var(--cell) * .95); }
   .side-x { grid-column: 1; justify-self: end; } .side-o { grid-column: 3; justify-self: start; }
   .side .big { width: clamp(120px, 12vw, 180px); aspect-ratio: 1; transition: transform .3s, filter .3s; }
