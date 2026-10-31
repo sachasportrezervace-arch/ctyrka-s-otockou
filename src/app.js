@@ -4,11 +4,41 @@ import { loadDoc, saveDoc, store, randId, deviceToken, decode, roleFor } from ".
 import { stoneSVG, teamSVG, ballSVG, cubeSVG, pebbleSVG, rockSVG, turnIcon } from "./art.js";
 
 const $ = id => document.getElementById(id);
-const device = deviceToken();
+const deviceBase = deviceToken();
+let device = deviceBase;
 const BASE_URL = location.origin + location.pathname;
 const calm = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 const wait = ms => new Promise(r => setTimeout(r, calm() ? Math.min(ms, 30) : ms));
 const attempt = (f, fb) => { try { return f(); } catch { return fb; } };
+
+// ---------- místnost Herny (protokol: react-apps/HERNA-PROTOKOL.md) ----------
+// #herna=1&m=…&r=…&seat=0|1&names=A,B&zaklada=0|1 – bez výzvy a setupu, jména i sedadla určuje Herna. Bez toho se hra chová jako dřív.
+function parseHerna() {
+  const q = {};
+  for (const part of location.hash.replace(/^#/, "").split("&")) { const i = part.indexOf("="); if (i > 0) q[part.slice(0, i)] = part.slice(i + 1); }
+  if (q.herna !== "1" || !/^[0-9a-z]{6,24}$/.test(q.r || "")) return null;
+  const dec = v => attempt(() => decodeURIComponent(v), v).trim().slice(0, 16);
+  const nm = (q.names || "").split(",").map(dec);
+  return { m: q.m || "", r: q.r, seat: q.seat === "1" ? 1 : 0, names: [nm[0] || "Hráč 1", nm[1] || "Hráč 2"], zaklada: q.zaklada === "1" };
+}
+let HERNA = parseHerna();
+const doHerny = z => { if (HERNA && window.parent !== window) attempt(() => window.parent.postMessage({ herna: 1, ...z }, "*")); };
+const hSent = new Set();
+let hFaze = "";
+// stav a výsledek pro Hernu: až když doběhla animace a zápis, ať výsledek neprozradí tah dřív než hra
+function hernaSync() {
+  if (!HERNA || animating || busy) return;
+  const st = g && room && room.so ? S() : null;
+  const faze = !st ? "ceka" : st.over ? "konec" : "hraje";
+  if (faze !== hFaze) { hFaze = faze; doHerny({ typ: "stav", faze }); }
+  if (st && st.over && (me === "x" || me === "o")) {
+    const key = room.id + ":" + g.n;
+    if (hSent.has(key)) return;
+    hSent.add(key);
+    const o = st.over, seatOf = p => p === me ? HERNA.seat : 1 - HERNA.seat;
+    doHerny({ typ: "vysledek", partie: key, vitez: o.kind === "win" ? seatOf(o.who) : null });
+  }
+}
 
 // ---------- stav ----------
 let g = null, rp = null, room = null, me = null, view = "setup", busy = false, animating = false, net = "", bootSeq = 0;
@@ -18,7 +48,8 @@ const S = () => rp && rp.st;
 const nameOf = p => p === "x" ? g.x : (g.o || "Soupeř");
 const freeSeat = () => room && !room.so ? "o" : null;
 const over = () => S() && S().over;
-const canAct = () => !!g && !!room && (me === "x" || me === "o") && !busy && !animating && !over() && S().turn === me;
+const waitOpp = () => !!HERNA && !!room && !room.so;   // v Herně se nehraje, dokud si soupeř nepřisedne
+const canAct = () => !!g && !!room && (me === "x" || me === "o") && !busy && !animating && !over() && !waitOpp() && S().turn === me;
 const linkFor = () => BASE_URL + "#r." + room.id;
 function setG(next) { g = next; rp = replay(g.cfg, g.m); }
 
@@ -61,8 +92,8 @@ function setView(v) {
   view = v;
   document.body.dataset.view = v;
   for (const id of ["setup", "share", "intro", "info", "game"]) $(id).hidden = id !== (v === "play" ? "game" : v);
-  $("newBtn").hidden = v === "setup";
-  $("linkBtn").hidden = !(room && !room.solo && g && (v === "play"));
+  $("newBtn").hidden = v === "setup" || !!HERNA;
+  $("linkBtn").hidden = !(room && !room.solo && g && (v === "play")) || !!HERNA;
   render();
   if (v === "play") requestAnimationFrame(fit);
 }
@@ -72,6 +103,7 @@ function render() {
   if (view === "share") renderShare();
   if (view === "intro") renderIntro();
   if (view === "play") renderGame();
+  if (HERNA) queueMicrotask(hernaSync);
 }
 
 function renderSetup() {
@@ -147,7 +179,9 @@ function renderHud() {
 function renderTurn() {
   const st = S(), o = over(), you = p => me === p;
   let title = "", sub = "";
-  if (o) {
+  if (!o && waitOpp() && me === "x") {
+    title = "Čekáme na soupeře"; sub = "Přisedne si sám, za chvilku.";
+  } else if (o) {
     if (o.kind === "draw") { title = "Remíza"; sub = "Deska je plná a nikdo nemá čtyřku."; }
     else {
       title = you(o.who) ? "Vyhráváš!" : me === other(o.who) ? `${nameOf(o.who)} vyhrává` : `${nameOf(o.who)} vyhrává`;
@@ -166,7 +200,7 @@ function renderTurn() {
     sub = room.so || me === "o" ? "Tah se tu objeví sám." : "Pošli odkaz, ať si přisedne.";
   }
   // na začátku partie: co je dnes jinak
-  if (!o && st.ply < 2 && (me === "x" || me === "o") && (g.n > 1 || room.solo)) {
+  if (!o && !waitOpp() && st.ply < 2 && (me === "x" || me === "o") && (g.n > 1 || room.solo)) {
     const c = g.cfg, mod = MODS[c.mod];
     sub = `<b>Partie ${g.n}: ${cfgLabel(c)}${c.mod !== "klid" ? " · " + mod.name : ""}.</b> ${c.mod !== "klid" ? mod.hint : g.n === 1 ? "Klasika na rozehřátí." : mod.hint}`;
     if ((g.n > 1 || room.solo) && st.ply === 0) {
@@ -179,7 +213,7 @@ function renderTurn() {
   if (/<b>/.test(sub)) $("turnSub").innerHTML = sub; else $("turnSub").textContent = sub;
 }
 function renderCtrl() {
-  const st = S(), o = over(), mine = (me === "x" || me === "o") && !o && st.turn === me;
+  const st = S(), o = over(), mine = (me === "x" || me === "o") && !o && st.turn === me && !waitOpp();
   for (const d of ["L", "R"]) {
     const b = $("rot" + d);
     const show = mine && st.rot[me] > 0;
@@ -196,10 +230,15 @@ function renderCtrl() {
       $("soloAgain").onclick = soloAgain;
       $("soloChallenge").onclick = goHome;
     } else if (me === "x" || me === "o") {
-      h.innerHTML = `<button class="btn" id="againBtn" type="button">${t.seriesWon ? "Nová série" : "Odveta"}<span>${nextLine(o)}</span></button>`;
+      h.innerHTML = `<button class="btn" id="againBtn" type="button">${t.seriesWon ? "Nová série" : "Odveta"}<span>${nextLine(o)}</span></button>${HERNA ? '<button class="btn ghost slim" id="otherBtn" type="button" style="margin-top:8px;width:auto;padding:8px 22px;font-size:15px">Jiná hra</button>' : ""}`;
       $("againBtn").disabled = busy || animating;
       $("againBtn").onclick = rematch;
+      if (HERNA) $("otherBtn").onclick = () => doHerny({ typ: "jina-hra" });
     } else h.textContent = "Partie skončila. Další začne, až někdo z hráčů dá odvetu.";
+  } else if (waitOpp() && (me === "x" || me === "o")) {
+    h.innerHTML = `Čeká se na soupeře<span class="wait" style="display:inline-flex;margin-left:8px"><i></i><i></i><i></i></span>`;
+  } else if (HERNA && (me === "watch" || !me)) {
+    h.textContent = "Díváš se.";
   } else if (me === "watch" || !me) {
     h.innerHTML = `Díváš se.<div class="row"><button class="chip ghost" data-claim="x" type="button">Jsem ${esc(nameOf("x"))}</button><button class="chip ghost" data-claim="o" type="button">Jsem ${esc(nameOf("o"))}</button></div>`;
   } else if (armed) {
@@ -582,6 +621,7 @@ function apply(d, force) {
 // ---------- dotazování ----------
 let pollT = null, pollSeq = 0, lastChange = Date.now(), fails = 0;
 function interval() {
+  if (waitOpp()) return fails ? 4000 : 1200;
   const idle = Date.now() - lastChange;
   const ms = idle < 5 * 60e3 ? 2500 : idle < 30 * 60e3 ? 10000 : 30000;
   return fails ? Math.min(60000, ms * 2 ** Math.min(fails, 4)) : ms;
@@ -661,7 +701,7 @@ $("linkBtn").addEventListener("click", () => room && !room.so ? sendLink() : cop
 // ---------- rozehrané hry na tomhle zařízení ----------
 function recentRooms() { return attempt(() => JSON.parse(store.get("c4-rooms") || "[]"), []).filter(r => r && /^[0-9a-z]{6,24}$/.test(r.id)); }
 function remember() {
-  if (!room || room.solo || !g) return;
+  if (!room || room.solo || !g || HERNA) return;
   const list = recentRooms().filter(r => r.id !== room.id);
   list.unshift({ id: room.id, x: g.x, o: g.o, me });
   store.set("c4-rooms", JSON.stringify(list.slice(0, 5)));
@@ -752,6 +792,7 @@ function showSetup() {
   setView("setup");
 }
 function goHome() {
+  if (HERNA) return;   // z Herny se vrací Herna svou lištou
   clearTimeout(pollT); bootSeq++;
   room = null; me = null; g = null; rp = null; busy = false; net = ""; sel = null; armed = null;
   stEl.forEach(el => el.remove()); stEl.clear();
@@ -784,7 +825,7 @@ const fsOn = () => !!(document.fullscreenElement || document.webkitFullscreenEle
 const installed = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
 function syncFs() {
   const on = fsOn(), b = $("fsBtn"), label = on ? "Ukončit celou obrazovku" : "Celá obrazovka";
-  b.hidden = installed();
+  b.hidden = installed() || !!HERNA;
   b.setAttribute("aria-label", label); b.title = label;
   $("fsIcon").setAttribute("d", on ? FS_ICON.exit : FS_ICON.enter);
   setTimeout(fit, 120);
@@ -824,11 +865,56 @@ async function openRoom(id, seq) {
   setView("play");
   if (over()) endFx();
 }
+// Herna: dokument r buď založím (zaklada=1), nebo čekám, až vznikne, a pak si sám sednu na volné místo bez výzvy
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+async function openHerna(seq) {
+  const H = HERNA, id = H.r;
+  room = { id, v: -1, sx: "", so: "" };
+  info("Čeká se, až hra naskočí…", "", null);
+  while (seq === bootSeq) {
+    let d = null;
+    try {
+      d = await loadDoc(id);
+      if (seq !== bootSeq) return;
+      if (!d && H.zaklada) {
+        // první partie jako v ostré hře: klasická deska bez překvapení, začíná zakladatel
+        const s = { x: H.names[H.seat], o: H.names[1 - H.seat], n: 1, cfg: makeCfg({ start: "x", board: "klasika", mod: "klid" }), m: [], sw: [0, 0], sc: [0, 0], ls: [0, 0] };
+        d = { app: "ctyrka", g: s, v: 1, sx: device, so: "" };
+        await saveDoc(id, d);
+        if (seq !== bootSeq) return;
+      }
+      if (d) {
+        const s = decode(d.g);
+        if (!s) { info("Tuhle hru se nepodařilo otevřít.", "", null); return; }
+        let role = roleFor(d, device, store.get("c4-r-" + id));
+        if (role === "join") {
+          d = { ...d, v: d.v + 1, so: device, g: { ...d.g, o: H.names[H.seat] } };
+          await saveDoc(id, d);
+          if (seq !== bootSeq) return;
+          role = "o";
+        }
+        setG(decode(d.g));
+        room.v = d.v; room.sx = d.sx || ""; room.so = d.so || "";
+        lastChange = Date.now(); schedule(waitOpp() ? 1200 : 2500);
+        me = role === "x" || role === "o" ? role : "watch";
+        if (me !== "watch") setMe(me);
+        setView("play");
+        if (over()) endFx();
+        return;
+      }
+    } catch {}
+    await sleep(1000);
+  }
+}
 function boot() {
   const seq = ++bootSeq;
   clearTimeout(pollT);
   room = null; me = null; busy = false; net = ""; fails = 0; sel = null; armed = null;
   stEl.forEach(el => el.remove()); stEl.clear();
+  HERNA = parseHerna(); hFaze = "";
+  device = HERNA ? deviceBase + "." + HERNA.seat : deviceBase;
+  syncFs();
+  if (HERNA) { g = null; rp = null; doHerny({ typ: "pripraveno" }); openHerna(seq); return; }
   const h = (location.hash || "").replace(/^#/, "");
   if (h === "solo") { startSolo(); return; }
   const r = /^r\.([0-9a-z]{6,24})$/.exec(h);
