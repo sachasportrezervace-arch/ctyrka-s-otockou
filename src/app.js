@@ -121,7 +121,8 @@ function renderHud() {
   for (const p of ["x", "o"]) {
     const P = p.toUpperCase(), i = p === "x" ? 0 : 1;
     const team = p === "x" ? "Kuličky" : "Kostky", title = titleFor(t.sc[i]);
-    const mood = o ? (o.kind === "draw" ? "idle" : o.who === p ? "happy" : "sad") : st.turn === p ? "idle" : "idle";
+    // na tahu = vykulené oči (dychtivě čeká), kdo čeká na soupeře, je v klidu a ztlumený (CSS)
+    const mood = o ? (o.kind === "draw" ? "idle" : o.who === p ? "happy" : "sad") : st.turn === p ? "fall" : "idle";
     for (const [box, big] of [[$("ava" + P), false], [$("big" + P), true]]) {
       if (!box.firstChild) box.innerHTML = teamSVG(p);
       box.dataset.m = big && !o && st.turn === p && sel !== null && me === p ? "fall" : mood;
@@ -197,8 +198,10 @@ function renderCtrl() {
   } else if (armed) {
     h.innerHTML = `<b>Klepni znovu</b> a deska se otočí ${armed === "L" ? "doleva" : "doprava"}.<br>Kamkoli jinam = zpět.`;
   } else if (mine) {
+    // nápověda jen na začátku partie a při výběru sloupce dotykem, jinak by se opakovala s řádkem nad deskou
     const mouse = matchMedia("(hover: hover) and (pointer: fine)").matches;
-    h.innerHTML = sel !== null && !mouse ? "<b>Klepni znovu</b> a kámen padne." : `${mouse ? "Klikni" : "Klepni"} na sloupec.${st.rot[me] ? "<br>Kulatá tlačítka otočí desku." : ""}`;
+    h.innerHTML = sel !== null && !mouse ? "<b>Klepni znovu</b> a kámen padne."
+      : st.ply < 2 ? `${mouse ? "Klikni" : "Klepni"} na sloupec.${st.rot[me] ? "<br>Kulatá tlačítka otočí desku." : ""}` : "";
   } else if (me === "x" && !room.so) {
     h.innerHTML = `<button class="chip" id="hintLink" type="button">Poslat odkaz soupeři</button>`;
     $("hintLink").onclick = sendLink;
@@ -212,6 +215,7 @@ function nextLine(o) {
 }
 function renderGame() {
   if (!g) return;
+  document.body.classList.toggle("ended", !!over());
   renderHud(); renderTurn(); renderCtrl();
   if (!animating) drawBoard(S());
 }

@@ -129,6 +129,8 @@ label.f input:focus { box-shadow: 0 0 0 3px rgba(28, 31, 74, .2); }
 .pl > .tok i.used { box-shadow: inset 0 0 0 2.5px var(--text), 0 0 0 2.5px var(--bg); }
 .brand { white-space: nowrap; font-size: 14px; }
 @media (max-width: 599px) { .brand span { display: none; } .brand i { width: 30px; height: 30px; } }
+/* ve hře na mobilu logo-kulička nesmí vypadat jako druhý Mark nad avatarem */
+@media (max-width: 899px) { body[data-view="play"] .brand { visibility: hidden; } }
 .app { overflow: hidden; }
 
 .stage { display: grid; grid-template-rows: auto 1fr; justify-items: center; min-height: 0; position: relative; }
@@ -195,7 +197,9 @@ label.f input:focus { box-shadow: 0 0 0 3px rgba(28, 31, 74, .2); }
   .stage { grid-column: 2; grid-row: 2; }
   .ctrl { grid-column: 2; grid-row: 3; width: min(100%, 620px); justify-self: center; }
   .turnline strong { font-size: 36px; }
-  .side { display: grid; grid-row: 2 / 4; align-content: center; justify-items: center; gap: 8px; text-align: center; padding-bottom: 60px; }
+  .side { display: grid; grid-row: 2; align-content: center; justify-items: center; gap: 8px; text-align: center; padding-top: 70px; }
+  .turnline { min-height: 0; }
+  .boardbox { margin-top: calc(var(--cell) * .95); }
   .side-x { grid-column: 1; justify-self: end; } .side-o { grid-column: 3; justify-self: start; }
   .side .big { width: clamp(120px, 12vw, 180px); aspect-ratio: 1; transition: transform .3s, filter .3s; }
   .side b { font: 400 28px/1.05 var(--display); max-width: 9em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -203,7 +207,9 @@ label.f input:focus { box-shadow: 0 0 0 3px rgba(28, 31, 74, .2); }
   .side .tok i { width: 34px; height: 34px; }
   .side .tl { font-size: 13px; font-weight: 800; color: var(--muted); }
   .side.is-turn .big { animation: bob 1.4s ease-in-out infinite; }
-  .side:not(.is-turn) .big { transform: scale(.84); }
+  .side:not(.is-turn) .big { transform: scale(.8); }
+  body:not(.ended) .side:not(.is-turn) { opacity: .55; }
+  .side { transition: opacity .3s; }
   .screen { align-content: center; }
   .duo .c { width: 150px; height: 150px; }
 }
@@ -241,7 +247,7 @@ label.f input:focus { box-shadow: 0 0 0 3px rgba(28, 31, 74, .2); }
   <section class="screen" id="setup" hidden>
     <div class="panel">
       <div class="duo"><div class="c ball" id="setupBall" data-m="happy"></div><div class="mini" id="setupMini"></div><div class="c cube" id="setupCube" data-m="idle"></div></div>
-      <h1>Čtyřka s otočkou</h1>
+      <h1>Čtyřka s&nbsp;otočkou</h1>
       <p class="lead">Čtyři v řadě pro dva na jednom odkazu. Jednou za partii smíš místo tahu <b>otočit celou desku</b> a všechno se sesype.</p>
       <form id="setupForm" autocomplete="off">
         <label class="f">Jak se jmenuješ?<input id="nameX" maxlength="16" required placeholder="Tvoje jméno" enterkeyhint="next"></label>
