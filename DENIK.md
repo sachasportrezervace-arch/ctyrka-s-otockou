@@ -18,4 +18,10 @@ Ověřeno (příkaz → exit):
 - `node tests/net.test.mjs` → 11 PASS, exit 0 (regrese: zakladatel nikdy nepřisedne sám k sobě)
 - `node tests/e2e.mjs http://127.0.0.1:8809/` → 25 PASS, exit 0 (Chromium 1440×900 zakladatel, WebKit iPhone 13 soupeř dotykem, divák;
   3 partie za sebou přes mantledb, tři různé desky i překvapení, otočka v partii 1 a 2, žádné chyby v konzoli). Snímky `design/shots/`.
-Zbývá: finální verdikt design-eye (běží), repo `sachasportrezervace-arch/ctyrka-s-otockou` + Pages, živý test `node tests/e2e.mjs https://sachasportrezervace-arch.github.io/ctyrka-s-otockou/`.
+- Design-eye herní kola: kolo 2 „profi“ (5 vad: zdvojené nápovědy, kdo je na tahu, výška desktopu, logo nad avatarem, zalomení titulku),
+  kolo 3 „profi“ (zbylo: drobné písmo hlavičky na desktopu, prázdný pás nad deskou, nápověda nahoře i dole). Vše opraveno a zkontrolováno
+  na renderech ze `node tests/e2e.mjs` (25 PASS, exit 0). Formální verdikt „profi indie hra“ NEPADL – limit 3 kol vyčerpán, nasazeno s opravami kola 3.
+- Nasazeno: repo https://github.com/sachasportrezervace-arch/ctyrka-s-otockou (veřejné, Pages z main), hra https://sachasportrezervace-arch.github.io/ctyrka-s-otockou/
+- Živý test: `node tests/e2e.mjs https://sachasportrezervace-arch.github.io/ctyrka-s-otockou/` → 25 PASS, exit 0 (snímky `design/shots/live-*`).
+NEOVĚŘENO: „Přidat na plochu“ na skutečném iPhonu, zvuky na skutečném zařízení, ležatý mobil, ovládání klávesnicí, reduced motion.
+Další krok, kdyby Mark chtěl víc: čtvrté kolo design-eye jen na rozvržení mobilu (místo nad deskou) a samostatný snímek animace otočky.
