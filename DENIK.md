@@ -17,7 +17,17 @@ Ověřeno (příkaz → výsledek, exit 0): `node tests/engine.test.mjs` → 46 
 `tests/herna.mjs` lokálně 22 PASS (jednou 1 FAIL, opakování 22 PASS, flaky), `tests/herna-live.mjs` živě 15 PASS.
 Design-eye: kolo 1 „OK s výhradami“ (6 vad), kolo 2 „OK s výhradami, těsně pod profi“ (4 vady), opravy kola 3 zapracovány a zkontrolovány na renderech; formální verdikt kola 3 NEPADL (šetření kontextu).
 NEOVĚŘENO: skutečný iPhone (zvuky, vibrace, plynulost animace), reduced motion, oči sledující ruku jen na desktopu s myší, staré otevřené záložky se starým app.js nepřečtou zadání s bombou/plackou (stačí obnovit stránku).
-Dál: design-eye kolo 3 s razítkem commitu; na šířku je deska 8×5 pořád menší (měřítko drží rotaci na výšku 8), případně schovat lištu ikon.
+Dál: viz dodatek níže.
+
+### Dodatek 1. 11. večer – formální design-eye kolo 3 (živě `411dd62`)
+Verdikt: **„OK s výhradami, těsně pod profi“** (desktop by profi obhájil). Z kola 2 opraveno ztlumení panelů a hlavička v sólu; 2 BLOKUJÍCÍ zůstaly, obě mobil:
+otočka na iPhonu na výšku usekla rohy desky (`seq-bomba-iphone-1.png`), na šířku políčko jen ~29 px (`50-placka-bomba-iphone-sirka.png`).
+Opraveno v `8f0c129` (nasazeno): deska se uprostřed otočky stáhne podle úhlu (`turnScale`, Web Animations s mezikrokem na 45°), na šířku se měří podle skutečného tvaru desky
+a po otočce přepočítá (`cellFor`/`boxDims`, `--bw/--bh`), otočka dopadne rovnou do nové velikosti. Políčko na šířku 29 → ~43 px, otočka na výšku se vejde do 390 px (zkontrolováno na renderech).
+Ověřeno: lokálně engine 46 · net 11 · e2e 25 · solo 14 · herna 22 · otocka 20 PASS; živě (`8f0c129`) e2e 25 · solo 14 · otocka 20 · herna-live 15 PASS.
+Formální verdikt „profi“ NEPADL (limit 3 kol vyčerpán), blokující nálezy kola 3 opraveny a nasazeny.
+Dál (kosmetika z kola 3): hlavička v sólu na výšku namačkaná doleva (`.hud` mřížka `1fr auto 1fr`), výsledek „vyhrává“ naskočí před dopadem vítězné kostky,
+výbuch bomby se tvarem plete s ikonou otočky (nepravidelné střepy, hvězdicové jádro).
 
 ## 31. 10. 2026 večer – sólo režim hotov (zadání `react-apps/HRY-SOLO-2026-10-31.md`)
 Příčina chyby „Znovu“: tlačítko se objeví už při dohrávání poslední animace, `soloAgain` při `animating === true` hned skončil a klik se zahodil.
