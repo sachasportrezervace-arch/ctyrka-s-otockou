@@ -1,3 +1,4 @@
+PŘEVZATO 1. 11. – kolo vylepšení, session ctyrka-kolo; jiná session sem nepíše.
 PŘEVZATO 31. 10. – dodělává session na účtu P, jiná session sem nepíše.
 
 # Deník – Čtyřka s otočkou
