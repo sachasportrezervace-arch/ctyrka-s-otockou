@@ -1,7 +1,7 @@
 // Čtyřka s otočkou – obrazovky, sdílená hra a animace. Pravidla jsou v engine.js, síť v net.js, kresby v art.js.
-import { replay, step, makeCfg, nextGame, tally, other, titleFor, BOARDS, MODS, SERIES_TO, canDrop, landRow, ROCK, X, O } from "./engine.js";
+import { replay, makeCfg, nextGame, tally, other, titleFor, botMove, BOARDS, MODS, SERIES_TO, canDrop, landRow, ROCK, X, O } from "./engine.js";
 import { loadDoc, saveDoc, store, randId, deviceToken, decode, roleFor } from "./net.js";
-import { stoneSVG, teamSVG, ballSVG, cubeSVG, pebbleSVG, rockSVG, turnIcon } from "./art.js";
+import { stoneSVG, teamSVG, ballSVG, cubeSVG, pebbleSVG, rockSVG, bombSVG, turnIcon } from "./art.js";
 
 const $ = id => document.getElementById(id);
 const deviceBase = deviceToken();
@@ -71,6 +71,11 @@ const sfx = {
   tick: () => tone(900, 700, 40, "square", .04),
   turn: () => { tone(180, 520, 420, "sawtooth", .05); tone(240, 90, 520, "triangle", .12, .1); },
   poof: () => tone(700, 1400, 160, "triangle", .12),
+  wind: () => tone(70, 240, 380, "sawtooth", .045),
+  clack: (k = 0) => tone(300 + k * 30, 140, 80, "triangle", .08),
+  thud: (k = 1) => { tone(120, 40, 280, "sine", .22 + .08 * k); tone(70, 30, 200, "square", .03 * k); },
+  hiss: () => tone(2600, 1800, 420, "square", .012),
+  boom: () => { tone(170, 28, 650, "sawtooth", .2); tone(90, 24, 760, "square", .1, .02); tone(1200, 200, 300, "triangle", .06); },
   win: () => [523, 659, 784, 1046].forEach((f, i) => tone(f, f, 200, "triangle", .14, i * .11)),
   lose: () => [392, 330, 262].forEach((f, i) => tone(f, f * .97, 240, "triangle", .1, i * .14)),
 };
@@ -84,7 +89,7 @@ const miniBoard = `<svg viewBox="0 0 64 64" aria-hidden="true"><rect x="4" y="8"
 for (const k of ["setup", "share", "intro"]) { $(k + "Ball").innerHTML = ballSVG(); $(k + "Cube").innerHTML = cubeSVG(); $(k + "Mini").innerHTML = miniBoard; }
 $("brandIco").innerHTML = ballSVG(); $("brandIco").dataset.m = "idle";
 $("rotL").innerHTML = turnIcon("L"); $("rotR").innerHTML = turnIcon("R");
-$("legend").innerHTML = [[ballSVG(), "Kuličky", "idle"], [cubeSVG(), "Kostky", "idle"], [pebbleSVG(), "Cizí kamínek", "idle"], [rockSVG(), "Kotva, nepadá", "idle"]]
+$("legend").innerHTML = [[ballSVG(), "Kuličky", "idle"], [cubeSVG(), "Kostky", "idle"], [pebbleSVG(), "Cizí kamínek", "idle"], [rockSVG(), "Kotva, nepadá", "idle"], [bombSVG(), "Bomba", "idle"]]
   .map(([s, t, m]) => `<div><i data-m="${m}">${s}</i>${t}</div>`).join("");
 
 // ---------- obrazovky ----------
@@ -337,6 +342,11 @@ function drawHand() {
   const hand = $("hand"), st = S();
   const show = canAct() && sel !== null && !armed;
   hand.classList.toggle("off", !show);
+  // všichni na desce koukají po kameni v ruce
+  stEl.forEach(el => {
+    const lx = show ? Math.max(-1, Math.min(1, (sel - cellOf(el).c) / 2)) : 0;
+    el.style.setProperty("--lx", lx.toFixed(2)); el.style.setProperty("--ly", show ? "-1" : "0");
+  });
   if (!show) return;
   if (hand.dataset.p !== me) { hand.innerHTML = teamSVG(me); hand.dataset.p = me; }
   hand.dataset.m = "fall";
@@ -389,47 +399,122 @@ async function playDrop(prevSt, ev, st) {
   await animateTo(el, ev.row, ev.col, fallMs(ev.row + 1));
   sfx.drop(ev.row); buzz(10);
   landFx(el); el.dataset.m = "idle";
+  // sousedé nadskočí, když vedle nich něco žuchne
+  for (let y = ev.row - 1; y <= ev.row + 1; y++) for (let x = ev.col - 1; x <= ev.col + 1; x++) {
+    if ((y === ev.row && x === ev.col) || y < 0 || y >= st.h || x < 0 || x >= st.w) continue;
+    const n = stEl.get(st.ids[y * st.w + x]);
+    if (n && n.dataset.v !== "4") { n.classList.remove("hop"); void n.offsetWidth; n.classList.add("hop"); setTimeout(() => n.classList.remove("hop"), 360); }
+  }
   await wait(120);
 }
+// otřes desky (k = síla), obláček prachu pod dopadlým kamenem, záblesk výbuchu
+function quake(k) {
+  if (calm()) return;
+  const box = $("boardbox");
+  box.style.setProperty("--q", Math.min(3, k).toFixed(2));
+  box.classList.remove("quake"); void box.offsetWidth; box.classList.add("quake");
+  setTimeout(() => box.classList.remove("quake"), 440);
+}
+function fxAt(cls, r, c, html, ms) {
+  if (calm()) return;
+  const el = document.createElement("div");
+  el.className = cls; el.innerHTML = html; pos(el, r, c);
+  $("stones").append(el);
+  setTimeout(() => el.remove(), ms);
+}
+const puff = (r, c) => fxAt("puff", r, c, "<i></i><i></i>", 460);
+const burst = (fill, core) => `<svg viewBox="-50 -50 100 100" aria-hidden="true"><path fill="${fill}" d="${[...Array(18)].map((_, i) => { const a = i * Math.PI / 9, R = i % 2 ? 22 : 48; return `${i ? "L" : "M"}${(Math.cos(a) * R).toFixed(1)} ${(Math.sin(a) * R).toFixed(1)}`; }).join(" ")}Z"/><circle r="17" fill="${core}"/></svg>`;
+const cellOf = el => { const m = /translate\((-?[\d.]+)%,\s*(-?[\d.]+)%\)/.exec(el.style.transform); return m ? { c: +m[1] / 100, r: +m[2] / 100 } : { c: 0, r: 0 }; };
+
 async function playTurn(prevSt, ev, st) {
   drawBoard(ev.before);
   clearGhost(); $("hand").classList.add("off");
   const board = $("board"), deg = ev.dir === "R" ? 90 : -90;
-  stEl.forEach(el => el.dataset.m = el.dataset.v > 2 ? "idle" : "fall");
-  sfx.turn(); buzz(30);
+  stEl.forEach(el => el.dataset.m = el.dataset.v === "4" || el.dataset.v === "3" ? "idle" : "fall");
   if (!calm()) {
+    // 1) nádech: deska se zvedne a couvne proti směru, kameny vytřeští oči a třesou se
     board.classList.remove("tilt-L", "tilt-R", "tilting");
-    board.style.transition = "transform .62s cubic-bezier(.6,-0.25,.35,1.25)";
+    board.style.transition = "transform .36s cubic-bezier(.3,0,.4,1)";
+    board.style.transform = `translateY(-3%) rotate(${deg * -.09}deg) scale(1.05)`;
+    stEl.forEach(el => el.dataset.v !== "4" && el.classList.add("shiver"));
+    sfx.wind(); buzz(15);
+    await wait(420);
+    // 2) otočení s přešvihem a dopad
+    sfx.turn(); buzz(30);
+    board.style.transition = "transform .6s cubic-bezier(.5,-0.15,.25,1.35)";
     board.style.transform = `rotate(${deg}deg)`;
-    await wait(660);
+    await wait(620);
+    stEl.forEach(el => el.classList.remove("shiver"));
     board.style.transition = "none"; board.style.transform = "";
     void board.offsetWidth; board.style.transition = "";
-  }
+    quake(1.2); sfx.thud(1);
+  } else sfx.turn();
   // po otočce: stejné kameny v nové orientaci, pak gravitace kolo po kole
-  dizzyUntil = Date.now() + 1800;
+  dizzyUntil = Date.now() + 2200;
   for (const round of ev.rounds) {
+    const first = round === ev.rounds[0], w = round.pre.w;
     drawBoard(round.pre, { moods: false });
-    stEl.forEach(el => { el.dataset.m = el.dataset.v > 2 ? "idle" : "dizzy"; el.style.setProperty("--wr", deg + "deg"); el.classList.add("wob"); setTimeout(() => el.classList.remove("wob"), 520); });
-    if (round === ev.rounds[0]) await wait(260);
-    const byId = new Map(round.moves.map(m => [m.id, m]));
+    stEl.forEach(el => {
+      el.dataset.m = el.dataset.v > 2 ? "idle" : "dizzy";
+      if (first) { el.style.setProperty("--wr", deg + "deg"); el.classList.add("wob"); setTimeout(() => el.classList.remove("wob"), 520); }
+    });
+    // 3) napětí: kameny chvilku visí ve vzduchu, než je gravitace chytne
+    const movers = round.moves.map(m => stEl.get(m.id)).filter(Boolean);
+    if (first && movers.length) {
+      await wait(380);
+      movers.forEach(el => { if (el.dataset.v < 3 || el.dataset.v === "5") el.dataset.m = "fall"; el.classList.add("shiver"); });
+      await wait(340);
+      movers.forEach(el => el.classList.remove("shiver"));
+    }
+    // 4) sesypání: sloupec po sloupci ve směru otočky, v každém sloupci od spodu
+    const cols = [...new Set(round.moves.map(m => m.to % w))].sort((a, b) => deg > 0 ? a - b : b - a);
     const jobs = [];
-    let k = 0;
-    for (const [id, m] of byId) {
-      const el = stEl.get(id); if (!el) continue;
-      const c = m.to % round.pre.w, r = Math.floor(m.to / round.pre.w);
-      const delay = (k++ % 6) * 25;
-      jobs.push(wait(delay).then(() => animateTo(el, r, c, fallMs(m.fall))).then(() => { landFx(el); }));
+    for (const m of round.moves) {
+      const el = stEl.get(m.id); if (!el) continue;
+      const c = m.to % w, r = Math.floor(m.to / w);
+      const below = round.moves.filter(o => o.to % w === c && o.to > m.to).length;
+      const delay = cols.indexOf(c) * 55 + below * 35;
+      jobs.push(wait(delay).then(() => animateTo(el, r, c, fallMs(m.fall))).then(() => {
+        landFx(el); sfx.clack(c); if (m.fall > 1) puff(r, c);
+      }));
     }
-    if (jobs.length) { await Promise.all(jobs); sfx.drop(2); buzz(14); }
-    if (round.cancel) {
-      await wait(280);
-      for (const id of round.cancel.ids) { const el = stEl.get(id); if (el) { el.dataset.m = "dizzy"; el.classList.add("poof"); } }
-      sfx.poof(); toast("Čtyřka pro oba naráz: obě vyletěly z desky!");
-      await wait(480);
-      for (const id of round.cancel.ids) { const el = stEl.get(id); if (el) { el.remove(); stEl.delete(id); } }
-    }
+    if (jobs.length) { await Promise.all(jobs); quake(.6 + round.moves.length / 8); sfx.thud(Math.min(2, round.moves.length / 6)); buzz(18); }
+    if (round.boom) await boomFx(round.boom);
+    if (round.cancel) await cancelFx(round.cancel);
   }
-  await wait(160);
+  await wait(200);
+}
+// bomba: doutnák zasyčí, výbuch, sousedé odletí od středu
+async function boomFx(b) {
+  const bomb = stEl.get(b.at[0]);
+  if (bomb) { bomb.dataset.m = "fall"; bomb.classList.add("fuse"); }
+  sfx.hiss();
+  await wait(520);
+  const at = bomb ? cellOf(bomb) : { r: 0, c: 0 };
+  fxAt("boom", at.r, at.c, burst("var(--x)", "var(--glow)"), 560);
+  sfx.boom(); buzz(90); quake(3);
+  for (const id of b.ids) {
+    const el = stEl.get(id); if (!el) continue;
+    if (el === bomb) { el.remove(); stEl.delete(id); continue; }
+    const p = cellOf(el), dx = p.c - at.c, dy = p.r - at.r;
+    el.style.setProperty("--dx", dx * 150 + "%"); el.style.setProperty("--dy", (dy * 150 - 60) + "%");
+    el.style.setProperty("--dr", (dx >= 0 ? 1 : -1) * 200 + "deg");
+    el.dataset.m = el.dataset.v > 2 ? "idle" : "dizzy"; el.classList.add("blast");
+  }
+  await wait(600);
+  for (const id of b.ids) { const el = stEl.get(id); if (el) { el.remove(); stEl.delete(id); } }
+}
+// obě čtyřky naráz: rozsvítí se, pak s jiskrou zmizí
+async function cancelFx(cx) {
+  await wait(200);
+  const els = cx.ids.map(id => stEl.get(id)).filter(Boolean);
+  els.forEach(el => { el.classList.add("win"); el.dataset.m = "fall"; });
+  sfx.tick();
+  await wait(520);
+  els.forEach(el => { const p = cellOf(el); el.classList.remove("win"); el.dataset.m = "dizzy"; el.classList.add("poof"); fxAt("boom small", p.r, p.c, burst("var(--glow)", "#FFF6E6"), 460); });
+  sfx.poof(); quake(1);
+  await wait(480);
+  for (const id of cx.ids) { const el = stEl.get(id); if (el) { el.remove(); stEl.delete(id); } }
 }
 // přehraje tahy od-do (vlastní i soupeřovy), pak vykreslí konečný stav
 async function playMoves(fromPly) {
@@ -733,27 +818,7 @@ async function soloAgain() {
     startSolo(g.cfg);
   } finally { soloBusy = false; }
 }
-// bot: vyhraje, když může (i otočkou); jinak zablokuje; nehraje tah, po kterém by soupeř hned vyhrál; rád střed, s náhodou
-function botMove(st) {
-  const me = st.turn, opp = other(me), all = s => [...Array(s.w).keys()].map(String);
-  const cols = all(st).filter(m => step(st, m));
-  const winsFor = (s, who) => all(s).filter(m => { const r = step({ ...s, turn: who }, m); return r && r.st.over && r.st.over.who === who; });
-  const win = cols.find(m => step(st, m).st.over?.who === me);
-  if (win) return win;
-  const turns = st.rot[me] ? ["L", "R"].filter(d => step(st, d)) : [];
-  const turnWin = turns.find(d => step(st, d).st.over?.who === me);
-  if (turnWin) return turnWin;
-  const block = winsFor(st, opp).find(m => cols.includes(m));
-  if (block) return block;
-  const safe = cols.filter(m => { const r = step(st, m); return !r.st.over && !winsFor(r.st, opp).length; });
-  // občas otočí, ať je vidět, co otočka umí, ale jen když tím nic nedaruje
-  if (st.ply > 7 && Math.random() < .18) {
-    const ok = turns.filter(d => { const r = step(st, d); return !r.st.over && !winsFor(r.st, opp).length; });
-    if (ok.length) return ok[Math.floor(Math.random() * ok.length)];
-  }
-  const pool = safe.length ? safe : cols, mid = (st.w - 1) / 2;
-  return pool.map(m => [m, Math.abs(m - mid) + Math.random() * 2.2]).sort((a, b) => a[1] - b[1])[0][0];
-}
+// bot Kostkobot (engine.js): o dva tahy dopředu i s otočkami, se šumem, ať se dá porazit
 async function botTurn() {
   if (!room || !room.solo || !g || over() || S().turn !== "o") return;
   const game = g;
@@ -925,4 +990,5 @@ addEventListener("hashchange", boot);
 document.fonts && document.fonts.ready.then(() => { document.body.dataset.ready = "1"; fit(); });
 boot();
 // pro testy: stav bez sahání do DOM
-window.__c4 = { get g() { return g; }, get me() { return me; }, get room() { return room; }, get view() { return view; }, get animating() { return animating; }, get busy() { return busy; } };
+// load: jen pro testy animací (tests/otocka.mjs) – sólo s daným zadáním a tahy, bez přehrávání
+window.__c4 = { load(cfg, m) { startSolo(); setG({ ...g, cfg, m }); stEl.forEach(el => el.remove()); stEl.clear(); fit(); render(); }, get g() { return g; }, get me() { return me; }, get room() { return room; }, get view() { return view; }, get animating() { return animating; }, get busy() { return busy; } };

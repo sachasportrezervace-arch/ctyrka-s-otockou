@@ -1,5 +1,5 @@
 // node tests/engine.test.mjs – pravidla bez prohlížeče
-import { replay, step, start, turnGrid, fours, makeCfg, nextGame, tally, validCfg, titleFor, X, O, PEB, ROCK, EMPTY } from "../src/engine.js";
+import { replay, step, start, turnGrid, fours, makeCfg, nextGame, tally, validCfg, titleFor, botMove, X, O, PEB, ROCK, EMPTY, BOMB } from "../src/engine.js";
 
 let pass = 0, fail = 0;
 const check = (name, ok, extra = "") => { ok ? pass++ : fail++; console.log(`${ok ? "PASS" : "FAIL"}  ${name}${extra ? "  (" + extra + ")" : ""}`); };
@@ -147,6 +147,65 @@ const grid = st => { const rows = []; for (let r = 0; r < st.h; r++) rows.push(s
   }
   lens.sort((a, b) => a - b);
   check("3000 náhodných partií bez chyby", bad === 0, `otoček ${turns}, vyrušení ${cancels}, medián tahů ${lens[lens.length >> 1]}`);
+}
+
+// 13) bomba: otočka ji shodí, bouchne a vymete okolí; bez pádu nebouchne
+{
+  const c = cfg({ mod: "bomba", bm: [3] });
+  check("zadání s bombou je platné", validCfg(c) && !validCfg({ ...c, bm: [9] }));
+  const s0 = start(c);
+  check("bomba padne na dno", s0.cells[5 * 7 + 3] === BOMB);
+  const r = replay(c, ["2", "4", "3", "R"]);
+  const ev = r.evs[3], boom = ev.rounds.find(x => x.boom)?.boom;
+  check("shozená bomba bouchne a vymete sousedy", !!boom && boom.ids.length === 4 && r.st.cells.every(v => v === EMPTY), grid(r.st));
+  const d = replay(c, ["3", "3"]);
+  check("bez otočky bomba nebouchne", d.st.cells.includes(BOMB) && d.st.cells.filter(v => v === X || v === O).length === 2);
+}
+// 14) placka 8 × 5: sloupec 7 funguje, otočka z ní udělá věž 5 × 8
+{
+  const c = makeCfg({ start: "x", board: "placka", mod: "klid" });
+  const r = replay(c, ["7", "0", "R"]);
+  check("placka 8×5 se otočí na 5×8", c.w === 8 && c.h === 5 && r && r.st.w === 5 && r.st.h === 8);
+}
+// 15) bot Kostkobot: vyhraje, zablokuje, nedaruje; proti náhodě skoro vždy vyhraje, starý hltavý bot s ním prohrává
+{
+  let seed = 7; const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+  const win = replay(cfg(), ["0", "6", "0", "6", "1", "6", "2"]);   // o má tři ve sloupci 6, x hrozí dole v řadě
+  check("bot vezme výhru", botMove(win.st, rnd) === "6");
+  const blk = replay(cfg(), ["0", "6", "0", "5", "0"]);
+  check("bot zablokuje", botMove(blk.st, rnd) === "0");
+  // starý bot z 31. 10.: vyhraje/zablokuje/bezpečný tah, střed s náhodou, jen o tah dopředu a bez obrany proti otočce
+  const greedy = st => {
+    const me = st.turn, opp = me === "x" ? "o" : "x", all = s => [...Array(s.w).keys()].map(String);
+    const cols = all(st).filter(m => step(st, m));
+    const winsFor = (s, who) => all(s).filter(m => { const q = step({ ...s, turn: who }, m); return q && q.st.over && q.st.over.who === who; });
+    const w = cols.find(m => step(st, m).st.over?.who === me); if (w) return w;
+    const b = winsFor(st, opp).find(m => cols.includes(m)); if (b) return b;
+    const safe = cols.filter(m => { const q = step(st, m); return !q.st.over && !winsFor(q.st, opp).length; });
+    const pool = safe.length ? safe : cols, mid = (st.w - 1) / 2;
+    return pool.map(m => [m, Math.abs(m - mid) + rnd() * 2.2]).sort((a, b) => a[1] - b[1])[0][0];
+  };
+  const randomMv = st => { const o = [...Array(st.w).keys()].map(String).filter(m => step(st, m)); return o[Math.floor(rnd() * o.length)]; };
+  const duel = (opp, n) => {
+    let won = 0, lost = 0, ms = 0, moves = 0, turnsByBot = 0; let prev = null;
+    for (let i = 0; i < n; i++) {
+      const c = makeCfg({ start: i % 2 ? "x" : "o", rnd, prev }); prev = c;
+      let st = start(c);
+      while (!st.over) {
+        let mv;
+        if (st.turn === "o") { const t = performance.now(); mv = botMove(st, rnd); ms += performance.now() - t; moves++; if (mv === "L" || mv === "R") turnsByBot++; }
+        else mv = opp(st);
+        st = step(st, mv).st;
+      }
+      if (st.over.who === "o") won++; else if (st.over.who === "x") lost++;
+    }
+    return { won, lost, avg: ms / moves, turnsByBot };
+  };
+  const vr = duel(randomMv, 100);
+  check("bot proti náhodným tahům vyhrává ≥ 95 %", vr.won >= 95, `${vr.won}:${vr.lost}`);
+  const vg = duel(greedy, 100);
+  check("bot porazí starého bota většinou, ale ne vždy", vg.won >= 55 && vg.won <= 98, `${vg.won}:${vg.lost}, otoček bota ${vg.turnsByBot}, ${vg.avg.toFixed(1)} ms na tah`);
+  check("bot přemýšlí pod 60 ms", vg.avg < 60, vg.avg.toFixed(1) + " ms");
 }
 
 console.log(`\n${pass} PASS, ${fail} FAIL`);

@@ -33,6 +33,7 @@
   --x: #F2492F; --x-dk: #C9321D; --o: #FFF6E6; --o-dk: #D9CCB4;
   --ink: #1C1F4A; --tongue: #FF8A7A; --sweat: #8FD6FF;
   --peb: #A7A3B8; --peb-dk: #85819A; --rock: #7C7790; --rock-dk: #5B5670; --bolt: #E6E1D2;
+  --bomb: #5A5F82; --bomb-dk: #34385A; --fuse: #C9935A; --glow: #FFD84D;
   --btn: #1C1F4A; --btn-text: #FFF6E6; --card: #FFF6E6;
   --display: "Rammetto One", "Arial Black", system-ui, sans-serif;
   --cell: 52px;
@@ -159,6 +160,32 @@ label.f input:focus { box-shadow: 0 0 0 3px rgba(28, 31, 74, .2); }
 .st.out { transition: transform .5s cubic-bezier(.5, 0, .9, .5), opacity .5s; opacity: 0; }
 .st.win > div { animation: winb .7s ease-in-out infinite alternate; }
 @keyframes winb { to { transform: translateY(-7%) scale(1.06); } }
+/* výherní čtyřka: žlutá svatozář za každým kamenem, pruh pod nimi je spojí */
+.st.win::before { content: ""; position: absolute; inset: -3%; border-radius: 50%; background: var(--glow); z-index: -1; animation: halo .45s cubic-bezier(.3, 1.6, .5, 1) both; }
+@keyframes halo { from { transform: scale(0); } }
+/* otočka: třas před otočením, otřes desky, prach při dopadu, bomba */
+.st.shiver > div { animation: shiver .08s linear infinite alternate; }
+@keyframes shiver { from { transform: translate(-2.5%, 1.5%) rotate(-3deg); } to { transform: translate(2.5%, -1.5%) rotate(3deg); } }
+.st.hop > div { animation: hop .34s ease-out; }
+@keyframes hop { 40% { transform: translateY(-12%); } }
+.boardbox.quake { animation: quake .42s cubic-bezier(.3, .7, .4, 1); }
+@keyframes quake { 10% { transform: translate(calc(var(--q) * -5px), calc(var(--q) * 4px)); } 25% { transform: translate(calc(var(--q) * 4px), calc(var(--q) * -3px)); } 45% { transform: translate(calc(var(--q) * -3px), calc(var(--q) * 1px)); } 65% { transform: translate(calc(var(--q) * 2px), 0); } 85% { transform: translate(calc(var(--q) * -1px), 0); } }
+.puff { position: absolute; left: 0; top: 0; width: var(--cell); height: var(--cell); pointer-events: none; }
+.puff i { position: absolute; bottom: 4%; width: 26%; height: 18%; border-radius: 50%; background: #FFF6E6; opacity: .8; animation: puff .42s ease-out forwards; }
+.puff i:first-child { left: 2%; --px: -60%; } .puff i:last-child { right: 2%; --px: 60%; }
+@keyframes puff { to { transform: translate(var(--px), -40%) scale(1.5); opacity: 0; } }
+.st[data-v="5"] .spark { transform-box: fill-box; transform-origin: center; animation: spark .5s ease-in-out infinite alternate; }
+.st.fuse[data-v="5"] .spark { animation-duration: .07s; }
+.st.fuse > div { animation: shiver .06s linear infinite alternate; }
+@keyframes spark { to { transform: scale(1.35) rotate(25deg); } }
+.st.blast > div { animation: blast .55s cubic-bezier(.2, .6, .4, 1) forwards; }
+@keyframes blast { to { transform: translate(var(--dx), var(--dy)) rotate(var(--dr)) scale(.2); opacity: 0; } }
+.boom { position: absolute; left: 0; top: 0; width: var(--cell); height: var(--cell); pointer-events: none; z-index: 3; }
+.boom svg { position: absolute; left: -100%; top: -100%; width: 300%; height: 300%; overflow: visible; animation: boom .5s cubic-bezier(.2, .8, .3, 1) forwards; }
+@keyframes boom { 0% { transform: scale(.1); } 45% { opacity: 1; } 100% { transform: scale(1.15) rotate(12deg); opacity: 0; } }
+.boom.small svg { left: -30%; top: -30%; width: 160%; height: 160%; animation-duration: .42s; }
+/* oči sledují kámen v ruce */
+.st .eyes { translate: calc(var(--lx, 0) * 3.5px) calc(var(--ly, 0) * 2.5px); transition: translate .22s ease-out; }
 .st.ghost { opacity: .32; pointer-events: none; }
 .f > g { display: none; }
 [data-m="idle"] .f-idle, [data-m="fall"] .f-fall, [data-m="happy"] .f-happy, [data-m="sad"] .f-sad, [data-m="dizzy"] .f-dizzy { display: inline; }
@@ -168,8 +195,8 @@ label.f input:focus { box-shadow: 0 0 0 3px rgba(28, 31, 74, .2); }
 .hand svg { width: 100%; height: 100%; display: block; overflow: visible; }
 .hand::after { content: ""; position: absolute; left: 50%; bottom: calc(var(--cell) * -.16); border: 7px solid transparent; border-top: 9px solid var(--text); transform: translateX(-50%); opacity: .45; }
 .hand.off { opacity: 0; }
-/* výherní řada: světlý pruh pod kameny */
-.winline { fill: none; stroke: #FFF6E6; stroke-linecap: round; opacity: .5; animation: glow .5s ease-out; }
+/* výherní řada: žlutý pruh pod kameny, spojí svatozáře do jedné řady */
+.winline { fill: none; stroke: var(--glow); stroke-linecap: round; opacity: .95; animation: glow .5s ease-out; }
 @keyframes glow { from { opacity: 0; } }
 
 /* spodek: otočky u rohů, uprostřed nápověda nebo odveta */
@@ -218,6 +245,22 @@ label.f input:focus { box-shadow: 0 0 0 3px rgba(28, 31, 74, .2); }
   .screen { align-content: center; }
   .duo .c { width: 150px; height: 150px; }
 }
+/* mobil na šířku: hráči a skóre vlevo, deska uprostřed, otočky a nápověda vpravo */
+@media (orientation: landscape) and (max-height: 559px) {
+  .game { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); column-gap: 16px; }
+  .hud { grid-column: 1; grid-row: 1; grid-template-columns: minmax(0, 1fr); align-content: center; justify-items: start; gap: 16px; }
+  .hud .mid { order: -1; text-align: left; }
+  .pl-o { flex-direction: row; text-align: left; }
+  .pl-o > .tok { right: auto; left: 30px; flex-direction: row; }
+  .stage { grid-column: 2; grid-row: 1; }
+  .turnline { min-height: 0; }
+  .turnline strong { font-size: 21px; }
+  .turnline span { font-size: 12.5px; }
+  .boardbox { margin-top: calc(var(--cell) * .9); }
+  .ctrl { grid-column: 3; grid-row: 1; grid-template-columns: auto auto; grid-template-areas: "h h" "l r"; align-content: center; justify-content: center; min-height: 0; padding-top: 0; row-gap: 12px; }
+  .ctrl .hint { grid-area: h; } .rot-l { grid-area: l; } .rot-r { grid-area: r; }
+  .rot { width: 58px; height: 58px; }
+}
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }
@@ -230,7 +273,7 @@ label.f input:focus { box-shadow: 0 0 0 3px rgba(28, 31, 74, .2); }
 .sheet h2 { font-size: 26px; margin-bottom: 8px; }
 .sheet ol { margin: 0 0 12px; padding-left: 22px; display: grid; gap: 8px; font-weight: 600; }
 .sheet ol b { font-weight: 800; }
-.sheet .legend { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 10px 0 14px; text-align: center; font-size: 13px; font-weight: 800; }
+.sheet .legend { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin: 10px 0 14px; text-align: center; font-size: 13px; font-weight: 800; }
 .sheet .legend i { display: block; width: 52px; height: 52px; margin: 0 auto 4px; }
 .sheet .legend svg { width: 100%; height: 100%; display: block; }
 </style>
@@ -339,7 +382,7 @@ label.f input:focus { box-shadow: 0 0 0 3px rgba(28, 31, 74, .2); }
       <li><b>Otočka:</b> jednou za partii smíš místo hodu otočit celou desku o 90° doleva nebo doprava. Všechno, co není přišroubované, se sesype na novou podlahu.</li>
       <li>Když po otočce vznikne čtyřka jen jednomu, ten vyhrál. I kdyby to byl soupeř: otočkou se dá i darovat.</li>
       <li>Když vznikne čtyřka <b>oběma naráz</b>, obě čtyřky vyletí z desky a zbytek se sesype znovu. Hraje se dál.</li>
-      <li>Každá partie je jiná: mění se <b>tvar desky</b> (7 × 6, 6 × 6, 5 × 7) a <b>překvapení</b>. Kdo prohrál, začíná další partii. Kdo prohrál dvakrát za sebou, má otočku navíc.</li>
+      <li>Každá partie je jiná: mění se <b>tvar desky</b> (7 × 6, 6 × 6, 5 × 7, 8 × 5) a <b>překvapení</b>: kotva, kamínky, dvě otočky nebo bomba, která bouchne, když ji otočka shodí. Kdo prohrál, začíná další partii. Kdo prohrál dvakrát za sebou, má otočku navíc.</li>
       <li>Série se hraje do tří vyhraných partií. Za vyhrané série sbíráš tituly: Oblázek, Šutr, Valoun, Balvan, Skála, Hora.</li>
     </ol>
     <div class="legend" id="legend"></div>

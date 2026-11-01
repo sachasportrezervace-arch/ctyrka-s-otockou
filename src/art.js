@@ -71,7 +71,20 @@ export const rockSVG = () => `<svg viewBox="0 0 100 100" aria-hidden="true">
   <g class="f"><g class="f-idle"><path ${S("M27 38 L47 44 L53 44 L73 38", 6)}/><circle cx="39" cy="53" r="4.4" fill="${ink}"/><circle cx="61" cy="53" r="4.4" fill="${ink}"/><path ${S("M41 70 L59 70")}/></g></g>
 </svg>`;
 
-export const stoneSVG = kind => kind === 1 ? ballSVG() : kind === 2 ? cubeSVG() : kind === 3 ? pebbleSVG() : rockSVG();
+// bomba: kulatá, s doutnákem a jiskrou; v klidu se šibalsky culí, při pádu vytřeští oči
+export const bombSVG = () => `<svg viewBox="0 0 100 100" aria-hidden="true">
+  <path ${S("M62 22 Q70 8 82 12", 5)} stroke="var(--fuse)"/>
+  <g class="spark"><circle cx="84" cy="11" r="7" fill="var(--x)"/><circle cx="84" cy="11" r="3.4" fill="#FFF3C4"/></g>
+  <rect x="50" y="16" width="20" height="13" rx="3" transform="rotate(28 60 22)" fill="var(--bomb-dk)"/>
+  <circle cx="48" cy="58" r="38" fill="var(--bomb-dk)"/><circle cx="45" cy="55" r="34" fill="var(--bomb)"/>
+  <ellipse cx="30" cy="38" rx="8" ry="4.4" transform="rotate(-40 30 38)" fill="#fff" opacity=".28"/>
+  <g class="f"><g class="f-idle"><path ${S("M28 52 q6 -6 12 0", 4.5)} stroke="#FFF6E6"/><path ${S("M52 50 q6 -6 12 0", 4.5)} stroke="#FFF6E6"/>
+    <path ${S("M33 66 Q46 76 60 64", 4.5)} stroke="#FFF6E6"/></g>
+  <g class="f-fall"><circle cx="34" cy="54" r="8" fill="#FFF6E6"/><circle cx="58" cy="52" r="8" fill="#FFF6E6"/><circle cx="34" cy="55" r="3" fill="${ink}"/><circle cx="58" cy="53" r="3" fill="${ink}"/>
+    <ellipse cx="46" cy="72" rx="5" ry="6" fill="#FFF6E6"/></g></g>
+</svg>`;
+
+export const stoneSVG = kind => kind === 1 ? ballSVG() : kind === 2 ? cubeSVG() : kind === 3 ? pebbleSVG() : kind === 5 ? bombSVG() : rockSVG();
 export const teamSVG = p => p === "x" ? ballSVG() : cubeSVG();
 
 // šipka otočky: oblouk ve směru otáčení

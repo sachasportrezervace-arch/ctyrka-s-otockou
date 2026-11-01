@@ -1,10 +1,11 @@
 // Čtyřka s otočkou – pravidla bez UI. Stejný kód běží v prohlížeči i v node testech.
 // Deska: w × h, index = r * w + c, řádek 0 nahoře, gravitace vždy dolů v aktuální orientaci.
-// Buňka: 0 prázdno, 1 = hráč x (kuličky), 2 = hráč o (kostky), 3 = kamínek (nikoho, padá), 4 = kotva (nikoho, nepadá).
+// Buňka: 0 prázdno, 1 = hráč x (kuličky), 2 = hráč o (kostky), 3 = kamínek (nikoho, padá), 4 = kotva (nikoho, nepadá),
+// 5 = bomba (nikoho, padá; když ji otočka shodí aspoň o políčko, bouchne a vymete osm sousedů kromě kotvy).
 // Partie se neukládá jako deska, ale jako zadání (cfg) + seznam tahů; stav se vždy přehraje od začátku.
 // Tah: "0"–"7" = hoď do sloupce, "L" = otoč desku doleva (proti směru hodin), "R" = doprava (po směru).
 
-export const EMPTY = 0, X = 1, O = 2, PEB = 3, ROCK = 4;
+export const EMPTY = 0, X = 1, O = 2, PEB = 3, ROCK = 4, BOMB = 5;
 export const other = p => p === "x" ? "o" : "x";
 const code = p => p === "x" ? X : O;
 
@@ -12,12 +13,14 @@ export const BOARDS = {
   klasika: { w: 7, h: 6, name: "Klasika", size: "7 × 6" },
   kostka: { w: 6, h: 6, name: "Kostka", size: "6 × 6" },
   vez: { w: 5, h: 7, name: "Věž", size: "5 × 7" },
+  placka: { w: 8, h: 5, name: "Placka", size: "8 × 5" },
 };
 export const MODS = {
   klid: { name: "Čistá deska", hint: "Žádné překvapení. Jen vy dva a otočka." },
   kotva: { name: "Kotva", hint: "Šutr přišroubovaný k desce. Nepadá ani po otočce." },
   kaminky: { name: "Kamínky", hint: "Dva cizí kamínky. Nepatří nikomu a padají s ostatními." },
   otocky: { name: "Dvě otočky", hint: "Každý má v téhle partii otočky dvě." },
+  bomba: { name: "Bomba", hint: "Když ji otočka shodí, bouchne a vymete všechno kolem." },
 };
 export const SERIES_TO = 3;
 // tituly podle počtu vyhraných sérií (každá série = kdo dřív vyhraje 3 partie)
@@ -50,6 +53,8 @@ export function makeCfg({ start, bonus = [0, 0], rnd = Math.random, prev = null,
     const cols = [...Array(w).keys()];
     for (let i = 0; i < 2; i++) cfg.peb.push(cols.splice(Math.floor(rnd() * cols.length), 1)[0]);
   }
+  // bomba padne do jednoho z prostředních sloupců, ať má kolem sebe co vymést
+  if (m === "bomba") cfg.bm = [1 + Math.floor(rnd() * (w - 2))];
   return cfg;
 }
 
@@ -61,7 +66,8 @@ export function validCfg(c) {
     && (c.pb === undefined || !!BOARDS[c.pb]) && (c.pm === undefined || !!MODS[c.pm])
     && Array.isArray(c.rot) && c.rot.length === 2 && c.rot.every(n => intIn(n, 6))
     && Array.isArray(c.rocks) && c.rocks.length <= 2 && c.rocks.every(i => intIn(i, w * h))
-    && Array.isArray(c.peb) && c.peb.length <= 3 && c.peb.every(i => intIn(i, w));
+    && Array.isArray(c.peb) && c.peb.length <= 3 && c.peb.every(i => intIn(i, w))
+    && (c.bm === undefined || (Array.isArray(c.bm) && c.bm.length <= 1 && c.bm.every(i => intIn(i, w))));
 }
 
 // ---------- stav ----------
@@ -72,6 +78,7 @@ function fresh(cfg) {
   };
   for (const i of cfg.rocks) { st.cells[i] = ROCK; st.ids[i] = st.nextId++; }
   for (const c of cfg.peb) { const r = landRow(st, c); if (r >= 0) { st.cells[r * st.w + c] = PEB; st.ids[r * st.w + c] = st.nextId++; } }
+  for (const c of cfg.bm || []) { const r = landRow(st, c); if (r >= 0) { st.cells[r * st.w + c] = BOMB; st.ids[r * st.w + c] = st.nextId++; } }
   return st;
 }
 const cloneSt = s => ({ ...s, cells: [...s.cells], ids: [...s.ids], rot: { ...s.rot }, over: s.over && { ...s.over } });
@@ -151,6 +158,21 @@ export function step(prev, mv) {
     for (let guard = 0; guard < 12; guard++) {
       const round = { pre: cloneSt(st), moves: settle(st) };
       ev.rounds.push(round);
+      // bomba, která při sesypání spadla, bouchne dřív, než se počítají čtyřky; pak se sype znovu
+      const lit = round.moves.filter(m => st.cells[m.to] === BOMB);
+      if (lit.length) {
+        const gone = new Set();
+        for (const { to } of lit) {
+          const r = Math.floor(to / st.w), c = to % st.w;
+          for (let y = r - 1; y <= r + 1; y++) for (let x = c - 1; x <= c + 1; x++) {
+            const j = y * st.w + x;
+            if (y >= 0 && y < st.h && x >= 0 && x < st.w && st.cells[j] !== EMPTY && st.cells[j] !== ROCK) gone.add(j);
+          }
+        }
+        round.boom = { at: lit.map(m => st.ids[m.to]), ids: [...gone].map(i => st.ids[i]) };
+        for (const i of gone) { st.cells[i] = EMPTY; st.ids[i] = 0; }
+        continue;
+      }
       const fx = fours(st, "x"), fo = fours(st, "o");
       if (fx.length && fo.length) {
         const gone = [...new Set([...fx, ...fo].flat())];
@@ -215,4 +237,62 @@ export function nextGame(g, over, rnd = Math.random) {
     sw: t.seriesWon ? [0, 0] : t.sw, sc: t.sc, ls: t.ls,
     cfg: makeCfg({ start, bonus, rnd, prev: g.cfg }),
   };
+}
+
+// ---------- bot Kostkobot (sólo) ----------
+// Dívá se o dva tahy dopředu včetně otoček obou hráčů: vyhraje, když může, nedaruje výhru (ani soupeřovou otočkou),
+// jinak bere pozici s víc otevřenými trojicemi a dvojicemi. Šum a občasné zaváhání ho nechávají porazitelného.
+const winCache = new Map();
+function windows(w, h) {
+  const key = w + "x" + h;
+  if (!winCache.has(key)) {
+    const out = [];
+    for (let r = 0; r < h; r++) for (let c = 0; c < w; c++) for (const [dr, dc] of DIRS) {
+      const er = r + dr * 3, ec = c + dc * 3;
+      if (er < 0 || er >= h || ec < 0 || ec >= w) continue;
+      out.push([0, 1, 2, 3].map(k => (r + dr * k) * w + c + dc * k));
+    }
+    winCache.set(key, out);
+  }
+  return winCache.get(key);
+}
+const WEIGHT = [0, 1, 5, 24];
+export function evalFor(st, who) {
+  const a = code(who), b = code(other(who)), mid = (st.w - 1) / 2;
+  let s = 0;
+  for (const win of windows(st.w, st.h)) {
+    let m = 0, o = 0, dead = false;
+    for (const i of win) { const v = st.cells[i]; if (v === a) m++; else if (v === b) o++; else if (v !== EMPTY) { dead = true; break; } }
+    if (dead || (m && o)) continue;
+    if (m) s += WEIGHT[m]; else if (o) s -= WEIGHT[o] * 1.2;
+  }
+  for (let i = 0; i < st.cells.length; i++) if (st.cells[i] === a) s += 1.2 * (1 - Math.abs(i % st.w - mid) / (mid + 1));
+  return s + (st.rot[who] - st.rot[other(who)]) * 6;
+}
+const movesOf = st => [...Array(st.w).keys()].map(String).concat(st.rot[st.turn] ? ["L", "R"] : []);
+export function botMove(st, rnd = Math.random, { noise = 7, slip = .12 } = {}) {
+  const me = st.turn, opp = other(me), opts = [];
+  for (const mv of movesOf(st)) {
+    const r = step(st, mv);
+    if (!r) continue;
+    let score;
+    const o = r.st.over;
+    if (o) score = o.kind === "draw" ? 0 : o.who === me ? 1e6 : -1e6;
+    else {
+      score = Infinity;
+      for (const m2 of movesOf(r.st)) {
+        const r2 = step(r.st, m2);
+        if (!r2) continue;
+        const o2 = r2.st.over;
+        const v = o2 ? (o2.kind === "draw" ? 0 : o2.who === opp ? -1e5 : 1e5) : evalFor(r2.st, me);
+        if (v < score) score = v;
+      }
+      if (score === Infinity) score = 0;
+    }
+    opts.push([mv, score + rnd() * noise]);
+  }
+  opts.sort((p, q) => q[1] - p[1]);
+  // občas zaváhá a vezme druhý nejlepší tah, ale nikdy nepromarní výhru a nedaruje prohru
+  if (opts.length > 1 && opts[0][1] < 5e5 && opts[1][1] > -5e4 && rnd() < slip) return opts[1][0];
+  return opts[0][0];
 }
