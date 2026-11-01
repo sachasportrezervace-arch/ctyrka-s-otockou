@@ -299,10 +299,12 @@ function stoneEl(id, v) {
   }
   return el;
 }
+let dims = { w: 0, h: 0 };
 function setDims(st) {
   const gr = $("grid");
   gr.style.setProperty("--w", st.w); gr.style.setProperty("--h", st.h);
   const key = st.w + "x" + st.h;
+  if (dims.w !== st.w || dims.h !== st.h) { dims = { w: st.w, h: st.h }; fit(); }
   if ($("holes").dataset.k !== key) {
     $("holes").dataset.k = key;
     let h = "";
@@ -363,21 +365,37 @@ function drawHand() {
 }
 function clearGhost() { const gh = $("stones").querySelector(".st.ghost"); gh && gh.remove(); }
 
-// velikost políčka: deska se vejde do čtverce, aby otočka nezměnila měřítko
-function fit() {
-  if (view !== "play" || !g) return;
-  const st = S(), stage = $("stage"), tl = stage.querySelector(".turnline");
-  const n = Math.max(BOARDS[g.cfg.b].w, BOARDS[g.cfg.b].h);
-  const desk = matchMedia("(min-width: 900px) and (min-height: 560px)").matches;
-  const land = matchMedia("(orientation: landscape) and (max-height: 559px)").matches;
+// velikost políčka: deska se vejde do čtverce, aby otočka nezměnila měřítko;
+// mobil na šířku má málo výšky, tam se deska měří podle skutečného tvaru a po otočce se přepočítá
+const isDesk = () => matchMedia("(min-width: 900px) and (min-height: 560px)").matches;
+const isLand = () => matchMedia("(orientation: landscape) and (max-height: 559px)").matches;
+function cellFor(w, h) {
+  const stage = $("stage"), tl = stage.querySelector(".turnline");
+  const desk = isDesk(), land = isLand();
   // na desktopu a mobilu na šířku má střední sloupec šířku podle desky, proto se šířka bere z okna, ne ze sloupce;
   // na šířku je řádek „kdo hraje“ vpravo vedle desky, výšku nezabírá
   const availW = desk ? innerWidth * .46 : land ? innerWidth * .5 : stage.clientWidth;
   const availH = stage.clientHeight - (land ? 0 : tl.offsetHeight) - 8;
-  const cell = Math.max(24, Math.floor(Math.min(availW / (n + .3), availH / (n + .3 + (land ? .95 : 1.15)), desk ? 92 : 84)));
-  $("game").style.setProperty("--cell", cell + "px");
-  $("boardbox").style.setProperty("--n", n);
-  void st;
+  return Math.max(24, Math.floor(Math.min(availW / (w + .3), availH / (h + .3 + (land ? .95 : 1.15)), desk ? 92 : 84)));
+}
+function boxDims() {
+  const n = Math.max(BOARDS[g.cfg.b].w, BOARDS[g.cfg.b].h);
+  return isLand() && dims.w ? dims : { w: n, h: n };
+}
+function fit() {
+  if (view !== "play" || !g) return;
+  const b = boxDims();
+  $("game").style.setProperty("--cell", cellFor(b.w, b.h) + "px");
+  $("boardbox").style.setProperty("--bw", b.w); $("boardbox").style.setProperty("--bh", b.h);
+}
+// kolik se musí deska zmenšit, aby se při náklonu o `deg` vešla na úzký mobil (desktop má místa dost)
+function turnScale(deg, w, h) {
+  if (isDesk()) return 1;
+  const cell = parseFloat($("game").style.getPropertyValue("--cell")) || 40;
+  const a = Math.abs(deg) * Math.PI / 180, W = (w + .28) * cell, H = (h + .28) * cell;
+  const availW = (isLand() ? innerWidth * .5 : innerWidth) - 12, availH = $("stage").clientHeight + (isLand() ? 0 : 40);
+  const ew = W * Math.abs(Math.cos(a)) + H * Math.abs(Math.sin(a)), eh = W * Math.abs(Math.sin(a)) + H * Math.abs(Math.cos(a));
+  return Math.min(1, availW / ew, availH / eh);
 }
 addEventListener("resize", fit);
 attempt(() => new ResizeObserver(fit).observe($("stage")));
@@ -443,19 +461,27 @@ async function playTurn(prevSt, ev, st) {
     // 1) nádech: deska se zvedne a couvne proti směru, kameny vytřeští oči a třesou se
     board.classList.remove("tilt-L", "tilt-R", "tilting");
     board.style.transition = "transform .36s cubic-bezier(.3,0,.4,1)";
-    // na úzkém mobilu by zvětšená deska přetekla z obrazovky, drama tam nese náklon a třas
-    const lift = matchMedia("(min-width: 900px), (orientation: landscape)").matches ? 1.1 : 1.02;
+    // na úzkém mobilu by zvětšená ani nakloněná deska nesměla přetéct z obrazovky, drama tam nese náklon a třas
+    const bw = ev.before.w, bh = ev.before.h, nx = ev.rounds[0]?.pre || { w: bh, h: bw };
+    const lift = isDesk() ? 1.1 : Math.min(isLand() ? 1.1 : 1.02, turnScale(deg * .12, bw, bh));
+    const mid = turnScale(45, bw, bh);
+    // na šířku má deska po otočce jinou velikost políčka, otočka dopadne rovnou do ní
+    const end = isLand() ? cellFor(nx.w, nx.h) / cellFor(bw, bh) : 1;
     board.style.transform = `translateY(-3%) rotate(${deg * -.12}deg) scale(${lift})`;
     stEl.forEach(el => el.dataset.v !== "4" && el.classList.add("shiver"));
     sfx.wind(); buzz(15);
     await wait(420);
-    // 2) otočení s přešvihem a dopad
+    // 2) otočení s přešvihem a dopad; uprostřed otočky se deska stáhne, aby rohy nevyjely z obrazovky
     sfx.turn(); buzz(30);
-    board.style.transition = "transform .6s cubic-bezier(.5,-0.15,.25,1.35)";
-    board.style.transform = `rotate(${deg}deg)`;
+    board.style.transition = "none";
+    const spin = board.animate([
+      { transform: board.style.transform },
+      { transform: `rotate(${deg * .5}deg) scale(${Math.min(mid, lift, end)})`, offset: .5 },
+      { transform: `rotate(${deg}deg) scale(${end})` },
+    ], { duration: 600, easing: "cubic-bezier(.5,-0.15,.25,1.35)", fill: "forwards" });
     await wait(620);
     stEl.forEach(el => el.classList.remove("shiver"));
-    board.style.transition = "none"; board.style.transform = "";
+    board.style.transform = ""; spin.cancel();
     void board.offsetWidth; board.style.transition = "";
     quake(1.2); sfx.thud(1);
   } else sfx.turn();

@@ -140,7 +140,7 @@ label.f input:focus { box-shadow: 0 0 0 3px rgba(28, 31, 74, .2); }
 .turnline strong { font: 400 clamp(24px, 6.8vw, 32px)/1.05 var(--display); display: block; }
 .turnline span { font-size: 14px; font-weight: 700; color: var(--muted); max-width: 36ch; justify-self: center; }
 .turnline span b { color: var(--text); font-weight: 800; }
-.boardbox { align-self: center; position: relative; width: calc(var(--n) * var(--cell) + var(--cell) * .28); height: calc(var(--n) * var(--cell) + var(--cell) * .28); margin-top: calc(var(--cell) * 1.1); display: grid; place-items: center; }
+.boardbox { align-self: center; position: relative; width: calc(var(--bw) * var(--cell) + var(--cell) * .28); height: calc(var(--bh) * var(--cell) + var(--cell) * .28); margin-top: calc(var(--cell) * 1.1); display: grid; place-items: center; }
 .board { position: relative; background: var(--plate); border-radius: calc(var(--cell) * .34); box-shadow: 0 calc(var(--cell) * .16) 0 var(--plate-dk); padding: calc(var(--cell) * .14); transform-origin: 50% 50%; }
 .board.tilt-L { transform: rotate(-7deg); } .board.tilt-R { transform: rotate(7deg); }
 .board.tilting { transition: transform .35s cubic-bezier(.3, 1.6, .5, 1); }
