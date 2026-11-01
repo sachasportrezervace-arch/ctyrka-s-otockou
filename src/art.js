@@ -74,9 +74,9 @@ export const rockSVG = () => `<svg viewBox="0 0 100 100" aria-hidden="true">
 // bomba: kulatá, s doutnákem a jiskrou; v klidu se šibalsky culí, při pádu vytřeští oči
 export const bombSVG = () => `<svg viewBox="0 0 100 100" aria-hidden="true">
   <path ${S("M62 22 Q70 8 82 12", 5)} stroke="var(--fuse)"/>
-  <g class="spark"><circle cx="84" cy="11" r="7" fill="var(--x)"/><circle cx="84" cy="11" r="3.4" fill="#FFF3C4"/></g>
-  <rect x="50" y="16" width="20" height="13" rx="3" transform="rotate(28 60 22)" fill="var(--bomb-dk)"/>
-  <circle cx="48" cy="58" r="38" fill="var(--bomb-dk)"/><circle cx="45" cy="55" r="34" fill="var(--bomb)"/>
+  <g class="spark"><path d="M84 -2 L88 7 L98 8 L90 14 L93 24 L84 18 L75 24 L78 14 L70 8 L80 7Z" fill="var(--x)"/><circle cx="84" cy="12" r="4.4" fill="#FFF3C4"/></g>
+  <rect x="50" y="16" width="20" height="13" rx="3" transform="rotate(28 60 22)" fill="var(--bomb-dk)" stroke="#FFF6E6" stroke-opacity=".55" stroke-width="2.5"/>
+  <circle cx="48" cy="58" r="39.5" fill="#FFF6E6" opacity=".55"/><circle cx="48" cy="58" r="37.5" fill="var(--bomb-dk)"/><circle cx="45" cy="55" r="33.5" fill="var(--bomb)"/>
   <ellipse cx="30" cy="38" rx="8" ry="4.4" transform="rotate(-40 30 38)" fill="#fff" opacity=".28"/>
   <g class="f"><g class="f-idle"><path ${S("M28 52 q6 -6 12 0", 4.5)} stroke="#FFF6E6"/><path ${S("M52 50 q6 -6 12 0", 4.5)} stroke="#FFF6E6"/>
     <path ${S("M33 66 Q46 76 60 64", 4.5)} stroke="#FFF6E6"/></g>

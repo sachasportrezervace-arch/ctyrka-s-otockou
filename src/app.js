@@ -173,7 +173,7 @@ function renderHud() {
     const on = !o && st.turn === p;
     $("pl" + P).classList.toggle("is-turn", on); $("side" + P).classList.toggle("is-turn", on);
   }
-  if (room && room.solo) { $("score").textContent = "Trénink"; $("score").style.fontSize = "22px"; $("series").textContent = "proti botovi, nic se nepočítá"; return; }
+  if (room && room.solo) { $("score").textContent = "Trénink"; $("score").style.fontSize = "16px"; $("series").textContent = ""; return; }
   $("score").style.fontSize = "";
   $("score").innerHTML = `${t.sw[0]}<i>:</i>${t.sw[1]}`;
   $("score").setAttribute("aria-label", `Série: ${nameOf("x")} ${t.sw[0]}, ${nameOf("o")} ${t.sw[1]}`);
@@ -201,8 +201,9 @@ function renderTurn() {
     // v prvních tazích radí spodní nápověda u ovládání, nahoře by se opakovala
     sub = st.ply < 2 ? "" : st.rot[me] ? "Hoď do sloupce, nebo otoč desku." : "Hoď do sloupce. Otočku už nemáš.";
   } else {
-    title = room.so || me === "o" ? `${nameOf(st.turn)} je na tahu` : "Čekáme na soupeře";
-    sub = room.so || me === "o" ? "Tah se tu objeví sám." : "Pošli odkaz, ať si přisedne.";
+    // jeden řádek: kdo přemýšlí; tah se objeví sám, netřeba to psát
+    title = room.so || me === "o" ? `${nameOf(st.turn)} přemýšlí` : "Čekáme na soupeře";
+    sub = room.so || me === "o" ? "" : "Pošli odkaz, ať si přisedne.";
   }
   // na začátku partie: co je dnes jinak
   if (!o && !waitOpp() && st.ply < 2 && (me === "x" || me === "o") && (g.n > 1 || room.solo)) {
@@ -256,7 +257,7 @@ function renderCtrl() {
   } else if (me === "x" && !room.so) {
     h.innerHTML = `<button class="chip" id="hintLink" type="button">Poslat odkaz soupeři</button>`;
     $("hintLink").onclick = sendLink;
-  } else h.innerHTML = `${esc(nameOf(st.turn))} přemýšlí<span class="wait" style="display:inline-flex;margin-left:8px"><i></i><i></i><i></i></span>`;
+  } else h.innerHTML = `<span class="wait" style="display:inline-flex" aria-label="${esc(nameOf(st.turn))} přemýšlí"><i></i><i></i><i></i></span>`;
   if (net) h.insertAdjacentHTML("beforeend", `<div class="small">${esc(net)}</div>`);
 }
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
@@ -367,8 +368,11 @@ function fit() {
   const st = S(), stage = $("stage"), tl = stage.querySelector(".turnline");
   const n = Math.max(BOARDS[g.cfg.b].w, BOARDS[g.cfg.b].h);
   const desk = matchMedia("(min-width: 900px) and (min-height: 560px)").matches;
-  // na desktopu má střední sloupec šířku podle desky, proto se šířka bere z okna, ne ze sloupce
-  const availW = desk ? innerWidth * .46 : stage.clientWidth, availH = stage.clientHeight - tl.offsetHeight - 8;
+  const land = matchMedia("(orientation: landscape) and (max-height: 559px)").matches;
+  // na desktopu a mobilu na šířku má střední sloupec šířku podle desky, proto se šířka bere z okna, ne ze sloupce;
+  // na šířku je řádek „kdo hraje“ vpravo vedle desky, výšku nezabírá
+  const availW = desk ? innerWidth * .46 : land ? innerWidth * .5 : stage.clientWidth;
+  const availH = stage.clientHeight - (land ? 0 : tl.offsetHeight) - 8;
   const cell = Math.max(24, Math.floor(Math.min(availW / (n + .3), availH / (n + .3 + 1.15), desk ? 92 : 84)));
   $("game").style.setProperty("--cell", cell + "px");
   $("boardbox").style.setProperty("--n", n);
@@ -423,7 +427,8 @@ function fxAt(cls, r, c, html, ms) {
   setTimeout(() => el.remove(), ms);
 }
 const puff = (r, c) => fxAt("puff", r, c, "<i></i><i></i>", 460);
-const burst = (fill, core) => `<svg viewBox="-50 -50 100 100" aria-hidden="true"><path fill="${fill}" d="${[...Array(18)].map((_, i) => { const a = i * Math.PI / 9, R = i % 2 ? 22 : 48; return `${i ? "L" : "M"}${(Math.cos(a) * R).toFixed(1)} ${(Math.sin(a) * R).toFixed(1)}`; }).join(" ")}Z"/><circle r="17" fill="${core}"/></svg>`;
+// výbuch: rázová vlna (dva kruhy z palety) a čtyři ploché střepy, které odletí
+const burst = (fill, core) => `<svg viewBox="-50 -50 100 100" aria-hidden="true"><circle class="wave" r="30" fill="none" stroke="${fill}" stroke-width="9"/><circle class="core" r="20" fill="${core}"/>${[20, 110, 200, 290].map(a => `<path class="shard" style="--a:${a}deg" fill="${fill}" d="M-5 -4 L6 -6 L3 6Z"/>`).join("")}</svg>`;
 const cellOf = el => { const m = /translate\((-?[\d.]+)%,\s*(-?[\d.]+)%\)/.exec(el.style.transform); return m ? { c: +m[1] / 100, r: +m[2] / 100 } : { c: 0, r: 0 }; };
 
 async function playTurn(prevSt, ev, st) {
@@ -431,11 +436,13 @@ async function playTurn(prevSt, ev, st) {
   clearGhost(); $("hand").classList.add("off");
   const board = $("board"), deg = ev.dir === "R" ? 90 : -90;
   stEl.forEach(el => el.dataset.m = el.dataset.v === "4" || el.dataset.v === "3" ? "idle" : "fall");
+  // celá scéna zadrží dech: okolí ztichne, zůstane jen deska
+  document.body.classList.add("turning");
   if (!calm()) {
     // 1) nádech: deska se zvedne a couvne proti směru, kameny vytřeští oči a třesou se
     board.classList.remove("tilt-L", "tilt-R", "tilting");
     board.style.transition = "transform .36s cubic-bezier(.3,0,.4,1)";
-    board.style.transform = `translateY(-3%) rotate(${deg * -.09}deg) scale(1.05)`;
+    board.style.transform = `translateY(-3%) rotate(${deg * -.12}deg) scale(1.1)`;
     stEl.forEach(el => el.dataset.v !== "4" && el.classList.add("shiver"));
     sfx.wind(); buzz(15);
     await wait(420);
@@ -483,6 +490,7 @@ async function playTurn(prevSt, ev, st) {
     if (round.cancel) await cancelFx(round.cancel);
   }
   await wait(200);
+  document.body.classList.remove("turning");
 }
 // bomba: doutnák zasyčí, výbuch, sousedé odletí od středu
 async function boomFx(b) {
@@ -528,7 +536,7 @@ async function playMoves(fromPly) {
     }
     if (over()) endFx();
   } finally {
-    animating = false;
+    animating = false; document.body.classList.remove("turning");
     sel = null; armed = null;
     render();
     if (Date.now() < dizzyUntil) setTimeout(() => { if (!animating && view === "play") drawBoard(S()); }, dizzyUntil - Date.now() + 30);

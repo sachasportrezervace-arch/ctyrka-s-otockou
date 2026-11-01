@@ -171,19 +171,28 @@ label.f input:focus { box-shadow: 0 0 0 3px rgba(28, 31, 74, .2); }
 .boardbox.quake { animation: quake .42s cubic-bezier(.3, .7, .4, 1); }
 @keyframes quake { 10% { transform: translate(calc(var(--q) * -5px), calc(var(--q) * 4px)); } 25% { transform: translate(calc(var(--q) * 4px), calc(var(--q) * -3px)); } 45% { transform: translate(calc(var(--q) * -3px), calc(var(--q) * 1px)); } 65% { transform: translate(calc(var(--q) * 2px), 0); } 85% { transform: translate(calc(var(--q) * -1px), 0); } }
 .puff { position: absolute; left: 0; top: 0; width: var(--cell); height: var(--cell); pointer-events: none; }
-.puff i { position: absolute; bottom: 4%; width: 26%; height: 18%; border-radius: 50%; background: #FFF6E6; opacity: .8; animation: puff .42s ease-out forwards; }
+.puff i { position: absolute; bottom: 2%; width: 34%; height: 24%; border-radius: 50%; background: #FFF6E6; opacity: .95; animation: puff .45s ease-out forwards; }
 .puff i:first-child { left: 2%; --px: -60%; } .puff i:last-child { right: 2%; --px: 60%; }
 @keyframes puff { to { transform: translate(var(--px), -40%) scale(1.5); opacity: 0; } }
 .st[data-v="5"] .spark { transform-box: fill-box; transform-origin: center; animation: spark .5s ease-in-out infinite alternate; }
 .st.fuse[data-v="5"] .spark { animation-duration: .07s; }
 .st.fuse > div { animation: shiver .06s linear infinite alternate; }
 @keyframes spark { to { transform: scale(1.35) rotate(25deg); } }
-.st.blast > div { animation: blast .55s cubic-bezier(.2, .6, .4, 1) forwards; }
-@keyframes blast { to { transform: translate(var(--dx), var(--dy)) rotate(var(--dr)) scale(.2); opacity: 0; } }
+.st.blast > div { animation: blast .5s cubic-bezier(.2, .6, .4, 1) forwards; }
+@keyframes blast { 70% { opacity: .6; } to { transform: translate(var(--dx), var(--dy)) rotate(var(--dr)) scale(.2); opacity: 0; } }
 .boom { position: absolute; left: 0; top: 0; width: var(--cell); height: var(--cell); pointer-events: none; z-index: 3; }
-.boom svg { position: absolute; left: -100%; top: -100%; width: 300%; height: 300%; overflow: visible; animation: boom .5s cubic-bezier(.2, .8, .3, 1) forwards; }
-@keyframes boom { 0% { transform: scale(.1); } 45% { opacity: 1; } 100% { transform: scale(1.15) rotate(12deg); opacity: 0; } }
-.boom.small svg { left: -30%; top: -30%; width: 160%; height: 160%; animation-duration: .42s; }
+.boom svg { position: absolute; left: -100%; top: -100%; width: 300%; height: 300%; overflow: visible; }
+.boom .wave { transform-box: fill-box; transform-origin: center; animation: wave .55s cubic-bezier(.2, .8, .3, 1) forwards; }
+.boom .core { transform-box: fill-box; transform-origin: center; animation: core .4s ease-out forwards; }
+.boom .shard { animation: shard .6s cubic-bezier(.2, .7, .4, 1) forwards; }
+@keyframes wave { from { transform: scale(.2); stroke-width: 16; } to { transform: scale(1.55); stroke-width: 1; opacity: 0; } }
+@keyframes core { 0% { transform: scale(.3); } 35% { transform: scale(1.15); } 100% { transform: scale(0); } }
+@keyframes shard { from { transform: rotate(var(--a)) translate(8px) rotate(0); } to { transform: rotate(var(--a)) translate(46px) rotate(220deg); opacity: 0; } }
+.boom.small svg { left: -30%; top: -30%; width: 160%; height: 160%; }
+/* během otočky okolí ztichne, zůstane jen deska */
+.hud, .side, .turnline, .ctrl, .bar { transition: opacity .3s; }
+body.turning .hud, body.turning .side, body.turning .turnline, body.turning .ctrl, body.turning .bar { opacity: .18; }
+.turnline span { text-wrap: balance; }
 /* oči sledují kámen v ruce */
 .st .eyes { translate: calc(var(--lx, 0) * 3.5px) calc(var(--ly, 0) * 2.5px); transition: translate .22s ease-out; }
 .st.ghost { opacity: .32; pointer-events: none; }
@@ -252,9 +261,10 @@ label.f input:focus { box-shadow: 0 0 0 3px rgba(28, 31, 74, .2); }
   .hud .mid { order: -1; text-align: left; }
   .pl-o { flex-direction: row; text-align: left; }
   .pl-o > .tok { right: auto; left: 30px; flex-direction: row; }
-  .stage { grid-column: 2; grid-row: 1; }
-  .turnline { min-height: 0; }
-  .turnline strong { font-size: 21px; }
+  .game { position: relative; }
+  .stage { grid-column: 2; grid-row: 1; position: static; }
+  .turnline { position: absolute; right: 0; top: 4%; width: 30%; min-height: 0; }
+  .turnline strong { font-size: 20px; }
   .turnline span { font-size: 12.5px; }
   .boardbox { margin-top: calc(var(--cell) * .9); }
   .ctrl { grid-column: 3; grid-row: 1; grid-template-columns: auto auto; grid-template-areas: "h h" "l r"; align-content: center; justify-content: center; min-height: 0; padding-top: 0; row-gap: 12px; }
