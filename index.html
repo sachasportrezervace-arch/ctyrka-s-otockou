@@ -191,7 +191,8 @@ label.f input:focus { box-shadow: 0 0 0 3px rgba(28, 31, 74, .2); }
 .boom.small svg { left: -30%; top: -30%; width: 160%; height: 160%; }
 /* během otočky okolí ztichne, zůstane jen deska */
 .hud, .side, .turnline, .ctrl, .bar { transition: opacity .3s; }
-body.turning .hud, body.turning .side, body.turning .turnline, body.turning .ctrl, body.turning .bar { opacity: .18; }
+/* !important: přebije ztlumení hráče, který není na tahu, ať ztichnou oba panely stejně */
+body.turning .hud, body.turning .side, body.turning .turnline, body.turning .ctrl, body.turning .bar { opacity: .18 !important; }
 .turnline span { text-wrap: balance; }
 /* oči sledují kámen v ruce */
 .st .eyes { translate: calc(var(--lx, 0) * 3.5px) calc(var(--ly, 0) * 2.5px); transition: translate .22s ease-out; }
@@ -254,6 +255,8 @@ body.turning .hud, body.turning .side, body.turning .turnline, body.turning .ctr
   .screen { align-content: center; }
   .duo .c { width: 150px; height: 150px; }
 }
+/* mobil na výšku v sólu: bez nápisu Trénink mezi hráči, ať se jména vejdou celá */
+@media (max-width: 899px) and (orientation: portrait) { body.solo .hud .mid { display: none; } }
 /* mobil na šířku: hráči a skóre vlevo, deska uprostřed, otočky a nápověda vpravo */
 @media (orientation: landscape) and (max-height: 559px) {
   .game { grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); column-gap: 16px; }
@@ -263,6 +266,7 @@ body.turning .hud, body.turning .side, body.turning .turnline, body.turning .ctr
   .pl-o > .tok { right: auto; left: 30px; flex-direction: row; }
   .game { position: relative; }
   .stage { grid-column: 2; grid-row: 1; position: static; }
+  /* řádek „kdo hraje“ vpravo vedle desky, výšku nezabírá */
   .turnline { position: absolute; right: 0; top: 4%; width: 30%; min-height: 0; }
   .turnline strong { font-size: 20px; }
   .turnline span { font-size: 12.5px; }

@@ -155,6 +155,7 @@ function tokens(el, p) {
 }
 function renderHud() {
   const st = S(), o = over(), t = scoreNow();
+  document.body.classList.toggle("solo", !!(room && room.solo));
   for (const p of ["x", "o"]) {
     const P = p.toUpperCase(), i = p === "x" ? 0 : 1;
     const team = p === "x" ? "Kuličky" : "Kostky", title = titleFor(t.sc[i]);
@@ -373,7 +374,7 @@ function fit() {
   // na šířku je řádek „kdo hraje“ vpravo vedle desky, výšku nezabírá
   const availW = desk ? innerWidth * .46 : land ? innerWidth * .5 : stage.clientWidth;
   const availH = stage.clientHeight - (land ? 0 : tl.offsetHeight) - 8;
-  const cell = Math.max(24, Math.floor(Math.min(availW / (n + .3), availH / (n + .3 + 1.15), desk ? 92 : 84)));
+  const cell = Math.max(24, Math.floor(Math.min(availW / (n + .3), availH / (n + .3 + (land ? .95 : 1.15)), desk ? 92 : 84)));
   $("game").style.setProperty("--cell", cell + "px");
   $("boardbox").style.setProperty("--n", n);
   void st;
@@ -442,7 +443,9 @@ async function playTurn(prevSt, ev, st) {
     // 1) nádech: deska se zvedne a couvne proti směru, kameny vytřeští oči a třesou se
     board.classList.remove("tilt-L", "tilt-R", "tilting");
     board.style.transition = "transform .36s cubic-bezier(.3,0,.4,1)";
-    board.style.transform = `translateY(-3%) rotate(${deg * -.12}deg) scale(1.1)`;
+    // na úzkém mobilu by zvětšená deska přetekla z obrazovky, drama tam nese náklon a třas
+    const lift = matchMedia("(min-width: 900px), (orientation: landscape)").matches ? 1.1 : 1.02;
+    board.style.transform = `translateY(-3%) rotate(${deg * -.12}deg) scale(${lift})`;
     stEl.forEach(el => el.dataset.v !== "4" && el.classList.add("shiver"));
     sfx.wind(); buzz(15);
     await wait(420);
